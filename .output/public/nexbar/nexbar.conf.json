@@ -1,0 +1,8 @@
+{
+  "openrgb": { "host": "127.0.0.1", "port": 6742, "device": "Nollie" },
+  "leds": { "physical": 24, "mapping": "stretch", "reverse": false, "backend": "auto" },
+  "idle": { "color": "#3aa7ff", "brightness": 25, "effect": "solid", "delay": 8, "patrol_num": 3 },
+  "thermal": { "overheat_c": 85, "clear_c": 80 },
+  "download": { "pause_idle_s": 10, "pulse_period_s": 2.0, "pulse_min_progress": 0.10 },
+  "ui": { "port": 1873 }
+}

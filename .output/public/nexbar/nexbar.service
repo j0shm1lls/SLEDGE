@@ -1,0 +1,13 @@
+[Unit]
+Description=NexBar2 SteamOS front light bar
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/lib/nexbar/nexbar-bridge.py --config %h/.config/nexbar/nexbar.conf.json --backend auto
+Restart=always
+RestartSec=2
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target
