@@ -29,8 +29,10 @@ export function ControlPanel() {
     <div className="seg-row"><span>17 → {m.physical} mapping</span><ToggleGroup.Root aria-label="LED mapping" type="single" className="toggles" value={m.mapping} onValueChange={(mapping) => mapping && m.patch({ mapping: mapping as typeof m.mapping })}>
       {['stretch','nearest','center'].map((x) => <ToggleGroup.Item key={x} value={x}>{x}</ToggleGroup.Item>)}
     </ToggleGroup.Root></div>
+    <div className="seg-row"><span><b>LED Direction</b><small className="muted">Choose the direction that makes download progress fill the way you expect.</small></span><ToggleGroup.Root aria-label="LED Direction" type="single" className="toggles" value={m.reverse ? 'reverse' : 'forward'} onValueChange={(direction) => direction && m.patch({ reverse: direction === 'reverse' })}>
+      <ToggleGroup.Item value="forward">Forward</ToggleGroup.Item><ToggleGroup.Item value="reverse">Reverse</ToggleGroup.Item>
+    </ToggleGroup.Root></div>
     <div className="check-grid">
-      <label className="check"><input type="checkbox" checked={m.reverse} onChange={(e) => m.patch({ reverse: e.target.checked })} /> Reverse physical orientation</label>
       <label className="check"><input aria-label="Pause download" type="checkbox" checked={paused} onChange={(e) => m.setState(e.target.checked ? 'paused' : 'download')} /> Pause download</label>
     </div>
   </section>
