@@ -1,4 +1,5 @@
 name: bootstrap-nexbar2
+# split archive transfer verified before build
 on:
   push:
     branches: [feat/nexbar2-v1]
