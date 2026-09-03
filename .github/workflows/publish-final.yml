@@ -1,10 +1,15 @@
-name: nexbar2-staging-manual
+name: persistence-red
 on:
-  workflow_dispatch:
+  push:
+    branches: [upload/nexbar2-final]
 permissions:
   contents: read
 jobs:
-  staging-note:
+  red:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Automated staging is disabled; active development is on wip/nexbar2-v1."
+      - uses: actions/checkout@v4
+        with:
+          ref: wip/nexbar2-v1
+      - name: Confirm persistence contract fails before implementation
+        run: python3 -m unittest public.nexbar.tests.test_persistence_contract -v
