@@ -1,10 +1,32 @@
-name: nexbar2-staging-manual
+name: integrate-led-direction
 on:
-  workflow_dispatch:
+  push:
+    branches: [upload/nexbar2-final]
 permissions:
-  contents: read
+  contents: write
 jobs:
-  staging-note:
+  direction-green:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Automated staging is disabled; active development is on wip/nexbar2-v1."
+      - uses: actions/checkout@v4
+      - name: Apply guarded direction transform and verify WIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp .bootstrap/direction-code.py /tmp/direction-code.py
+          git fetch origin wip/nexbar2-v1
+          git checkout -B direction-work origin/wip/nexbar2-v1
+          python3 /tmp/direction-code.py
+
+          python3 -m unittest discover -s public/nexbar/tests -p 'test_*.py' -v
+          npm test
+          python3 -m py_compile public/nexbar/nexbar-bridge.py
+          node scripts/build-nexbar-zip.mjs
+          unzip -t public/nexbar/nexbar.zip
+          git diff --check
+
+          git config user.name "nexbar2-build"
+          git config user.email "actions@users.noreply.github.com"
+          git add public/nexbar/nexbar-bridge.py public/nexbar/nexbar.zip
+          git commit -m "feat: expose LED direction forward/reverse"
+          git push origin HEAD:wip/nexbar2-v1
