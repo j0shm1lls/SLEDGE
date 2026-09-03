@@ -16,7 +16,7 @@ jobs:
           mkdir -p /tmp/nexbar-preserve
           if [ -d docs ]; then cp -a docs /tmp/nexbar-preserve/docs; fi
           cp .bootstrap/final.patch /tmp/final.patch
-          echo "3de4c200a4b0e6b221b3d5bbfb13a2403e0e6760ef74092967847450b7ab03e9  /tmp/final.patch" | sha256sum -c -
+          echo "c2d3416cc343b21f70d8426f2b1ca005d933429bab472d391b8bb9f6e42dffda  /tmp/final.patch" | sha256sum -c -
           cat \
             .bootstrap/final.part00 \
             .bootstrap/final.part01 \
