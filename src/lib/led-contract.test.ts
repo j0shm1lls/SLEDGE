@@ -90,6 +90,17 @@ test('preview exposes the approved demo and advanced fallback controls', async (
   assert.ok(demo.includes("state: 'thermal'"))
 })
 
+test('install preview documents persistent Nollie1 CDC setup', async () => {
+  const { readFile } = await import('node:fs/promises')
+  const panel = await readFile(new URL('../components/install-panel.tsx', import.meta.url), 'utf8')
+  assert.ok(panel.includes('./install.sh --with-shim'))
+  assert.ok(panel.includes('16d5:2a01'))
+  assert.ok(panel.includes('/dev/serial/by-id/'))
+  assert.ok(panel.includes('/etc/modules-load.d/nexbar.conf'))
+  assert.ok(panel.includes('./install.sh --repair-shim'))
+  assert.ok(!panel.includes('hidraw /dev/hidraw'))
+})
+
 test('fallback idle renderer supports solid, breath, rainbow, and patrol', async () => {
   const contract = await import('./led-contract.ts') as typeof import('./led-contract.ts') & { renderIdleEffect?: Function }
   assert.equal(typeof contract.renderIdleEffect, 'function')
