@@ -18,6 +18,7 @@ jobs:
           git checkout -B direction-refresh-work origin/wip/nexbar2-v1
           python3 /tmp/direction-refresh-code.py
 
+          npm ci
           python3 -m unittest discover -s public/nexbar/tests -p 'test_*.py' -v
           npm test
           npm run typecheck
