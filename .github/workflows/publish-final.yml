@@ -1,17 +1,17 @@
-name: diagnostics-cdc-red
+name: diagnostics-cdc-green
 on:
   push:
     branches: [upload/nexbar2-final]
 permissions:
   contents: read
 jobs:
-  red:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: wip/nexbar2-v1
-      - name: Confirm stale diagnostics label fails CDC contract
+      - name: Verify CDC preview diagnostics
         run: |
           npm ci
           npm test
