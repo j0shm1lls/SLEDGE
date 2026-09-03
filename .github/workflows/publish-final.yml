@@ -9,16 +9,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Integrate CDC patch with an explicit red-green gate
+      - name: Exercise CDC regression contract and integrate when implementation is staged
         shell: bash
         run: |
           set -euo pipefail
-          if [ ! -f .bootstrap/cdc-test.patch ] || [ ! -f .bootstrap/cdc-code.patch ]; then
-            echo 'CDC patches not both staged yet; nothing to integrate.'
+          if [ ! -f .bootstrap/cdc-test.patch ]; then
+            echo 'CDC regression patch not staged yet; nothing to exercise.'
             exit 0
           fi
           cp .bootstrap/cdc-test.patch /tmp/cdc-test.patch
-          cp .bootstrap/cdc-code.patch /tmp/cdc-code.patch
+          if [ -f .bootstrap/cdc-code.patch ]; then cp .bootstrap/cdc-code.patch /tmp/cdc-code.patch; fi
           git fetch origin wip/nexbar2-v1
           git checkout -B cdc-work origin/wip/nexbar2-v1
           git apply /tmp/cdc-test.patch
@@ -34,6 +34,11 @@ jobs:
           fi
           grep -q "has no attribute 'NollieCdc'" /tmp/cdc-red.log
           echo 'Observed expected RED: CDC backend does not exist yet.'
+
+          if [ ! -f /tmp/cdc-code.patch ]; then
+            echo 'RED gate complete; implementation patch has not been staged yet.'
+            exit 0
+          fi
 
           git apply /tmp/cdc-code.patch
           python3 -m unittest public/nexbar/tests/test_nollie_cdc.py -v
