@@ -1,55 +1,10 @@
-name: integrate-nollie-cdc
+name: nexbar2-staging-manual
 on:
-  push:
-    branches: [upload/nexbar2-final]
+  workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
 jobs:
-  cdc-red-green:
+  staging-note:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Exercise CDC regression contract and integrate when implementation is staged
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ ! -f .bootstrap/cdc-test.patch ]; then
-            echo 'CDC regression patch not staged yet; nothing to exercise.'
-            exit 0
-          fi
-          cp .bootstrap/cdc-test.patch /tmp/cdc-test.patch
-          if [ -f .bootstrap/cdc-code.py ]; then cp .bootstrap/cdc-code.py /tmp/cdc-code.py; fi
-          git fetch origin wip/nexbar2-v1
-          git checkout -B cdc-work origin/wip/nexbar2-v1
-          git apply --recount /tmp/cdc-test.patch
-
-          set +e
-          python3 -m unittest public/nexbar/tests/test_nollie_cdc.py -v >/tmp/cdc-red.log 2>&1
-          red_rc=$?
-          set -e
-          cat /tmp/cdc-red.log
-          if [ "$red_rc" -eq 0 ]; then
-            echo 'Expected CDC regression test to fail before implementation, but it passed.' >&2
-            exit 1
-          fi
-          grep -q "has no attribute 'NollieCdc'" /tmp/cdc-red.log
-          echo 'Observed expected RED: CDC backend does not exist yet.'
-
-          if [ ! -f /tmp/cdc-code.py ]; then
-            echo 'RED gate complete; implementation transform has not been staged yet.'
-            exit 0
-          fi
-
-          python3 /tmp/cdc-code.py
-          python3 -m unittest public/nexbar/tests/test_nollie_cdc.py -v
-          python3 -m unittest discover -s public/nexbar/tests -p 'test_*.py' -v
-          python3 -m py_compile public/nexbar/nexbar-bridge.py
-          node scripts/build-nexbar-zip.mjs
-          unzip -t public/nexbar/nexbar.zip
-          git diff --check
-
-          git config user.name "nexbar2-build"
-          git config user.email "actions@users.noreply.github.com"
-          git add public/nexbar
-          git commit -m "feat: support Nollie1 CDC serial backend"
-          git push origin HEAD:wip/nexbar2-v1
+      - run: echo "Automated staging is disabled; active development is on wip/nexbar2-v1."
