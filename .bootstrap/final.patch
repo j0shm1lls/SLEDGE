@@ -1,0 +1,39 @@
+diff --git a/package.json b/package.json
+index d8193ef..1453106 100644
+--- a/package.json
++++ b/package.json
+@@ -5,8 +5,8 @@
+   "type": "module",
+   "scripts": {
+     "dev": "vite dev --host 0.0.0.0 --port 8080",
+-    "build": "vite build",
+-    "typecheck": "tsc --noEmit",
++    "build": "tsr generate && vite build",
++    "typecheck": "tsr generate && tsc --noEmit",
+     "test": "node --experimental-strip-types --test src/lib/led-contract.test.ts",
+     "test:python": "python3 -m unittest discover -s public/nexbar/tests -p 'test_*.py' -v",
+     "package:nexbar": "node scripts/build-nexbar-zip.mjs"
+@@ -31,6 +31,7 @@
+     "nitro": "3.0.260610-beta",
+     "typescript": "^5.7.0",
+     "vite": "^8.2.0",
+-    "@playwright/test": "^1.62.0"
++    "@playwright/test": "^1.62.0",
++    "@tanstack/router-cli": "^1.170.0"
+   }
+ }
+diff --git a/src/lib/led-contract.test.ts b/src/lib/led-contract.test.ts
+index d5e5c14..bb06c8f 100644
+--- a/src/lib/led-contract.test.ts
++++ b/src/lib/led-contract.test.ts
+@@ -94,3 +94,10 @@ test('fallback idle renderer supports solid, breath, rainbow, and patrol', async
+   assert.ok(patrol.some((p) => p.r || p.g || p.b))
+   assert.ok(patrol.some((p) => !(p.r || p.g || p.b)))
+ })
++
++test('standalone typecheck generates the TanStack file route tree first', async () => {
++  const { readFile } = await import('node:fs/promises')
++  const pkg = JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8'))
++  assert.match(pkg.scripts.typecheck, /tsr generate/)
++  assert.ok(pkg.devDependencies['@tanstack/router-cli'])
++})
