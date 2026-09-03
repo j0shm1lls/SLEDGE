@@ -434,7 +434,7 @@ class LegacyPauseMigrationTests(unittest.TestCase):
 class ControlPageContractTests(unittest.TestCase):
     def test_control_page_exposes_all_advanced_fallback_controls(self):
         html = bridge.CONTROL_HTML
-        for control_id in ('effect', 'physical', 'reverse', 'backend', 'trip', 'clear', 'pause', 'pulse'):
+        for control_id in ('effect', 'physical', 'direction', 'backend', 'trip', 'clear', 'pause', 'pulse'):
             self.assertIn(f'id="{control_id}"', html)
         self.assertIn('Steam Personalization', html)
         self.assertIn('thermal.overheat_c', html)
