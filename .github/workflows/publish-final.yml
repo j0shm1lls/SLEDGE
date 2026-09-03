@@ -1,30 +1,63 @@
-name: release-browser-verify
+name: hydration-diagnostic
 on:
   push:
     branches: [upload/nexbar2-final]
 permissions:
   contents: read
 jobs:
-  verify:
+  diagnose:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: wip/nexbar2-v1
-      - name: Verify full release including browser smoke
+      - name: Diagnose browser hydration
         shell: bash
         run: |
           set -euo pipefail
           npm ci
           npx playwright install --with-deps chromium
-          npm test
-          npm run typecheck
-          npm run build
-          python3 -m unittest discover -s public/nexbar/tests -p 'test_*.py' -v
-          python3 -m py_compile public/nexbar/nexbar-bridge.py
-          bash -n public/nexbar/install.sh
-          sh -n public/nexbar/install.sh
-          npm run package:nexbar
-          unzip -t public/nexbar/nexbar.zip
-          npx playwright test
-          git diff --check
+          npm run dev > /tmp/nexbar-dev.log 2>&1 &
+          DEV_PID=$!
+          trap 'kill "$DEV_PID" 2>/dev/null || true' EXIT
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8080/ >/tmp/nexbar.html; then break; fi
+            sleep 1
+          done
+          echo '=== DEV LOG ==='
+          cat /tmp/nexbar-dev.log
+          echo '=== HTML SCRIPTS ==='
+          grep -o '<script[^>]*>[^<]*</script>\|<script[^>]*>' /tmp/nexbar.html || true
+          cat > /tmp/diag.mjs <<'JS'
+          import { chromium } from 'playwright'
+          const browser = await chromium.launch({ headless: true })
+          const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+          const consoles = []
+          const errors = []
+          page.on('console', m => consoles.push(`${m.type()}: ${m.text()}`))
+          page.on('pageerror', e => errors.push(String(e)))
+          page.on('requestfailed', r => errors.push(`requestfailed ${r.url()} ${r.failure()?.errorText}`))
+          await page.goto('http://127.0.0.1:8080/', { waitUntil: 'networkidle' })
+          await page.waitForTimeout(500)
+          const before = await page.evaluate(() => ({
+            readyState: document.readyState,
+            scripts: [...document.scripts].map(s => ({ src: s.src, type: s.type, text: s.textContent?.slice(0, 160) })),
+            storage: localStorage.getItem('nexbar2-preview'),
+            downloading: [...document.querySelectorAll('button')].find(b => b.textContent?.startsWith('Downloading'))?.className,
+            demo: [...document.querySelectorAll('button')].find(b => b.textContent?.startsWith('Restart demo'))?.className,
+          }))
+          console.log('BEFORE', JSON.stringify(before, null, 2))
+          const button = page.getByRole('button', { name: /^Downloading/ })
+          await button.click()
+          await page.waitForTimeout(500)
+          const after = await page.evaluate(() => ({
+            storage: localStorage.getItem('nexbar2-preview'),
+            downloading: [...document.querySelectorAll('button')].find(b => b.textContent?.startsWith('Downloading'))?.className,
+            demo: [...document.querySelectorAll('button')].find(b => b.textContent?.startsWith('Restart demo'))?.className,
+          }))
+          console.log('AFTER', JSON.stringify(after, null, 2))
+          console.log('CONSOLE', JSON.stringify(consoles, null, 2))
+          console.log('ERRORS', JSON.stringify(errors, null, 2))
+          await browser.close()
+          JS
+          node /tmp/diag.mjs
