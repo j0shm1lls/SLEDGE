@@ -18,7 +18,7 @@ jobs:
             exit 0
           fi
           cp .bootstrap/cdc-test.patch /tmp/cdc-test.patch
-          if [ -f .bootstrap/cdc-code.patch ]; then cp .bootstrap/cdc-code.patch /tmp/cdc-code.patch; fi
+          if [ -f .bootstrap/cdc-code.py ]; then cp .bootstrap/cdc-code.py /tmp/cdc-code.py; fi
           git fetch origin wip/nexbar2-v1
           git checkout -B cdc-work origin/wip/nexbar2-v1
           git apply --recount /tmp/cdc-test.patch
@@ -35,12 +35,12 @@ jobs:
           grep -q "has no attribute 'NollieCdc'" /tmp/cdc-red.log
           echo 'Observed expected RED: CDC backend does not exist yet.'
 
-          if [ ! -f /tmp/cdc-code.patch ]; then
-            echo 'RED gate complete; implementation patch has not been staged yet.'
+          if [ ! -f /tmp/cdc-code.py ]; then
+            echo 'RED gate complete; implementation transform has not been staged yet.'
             exit 0
           fi
 
-          git apply --recount /tmp/cdc-code.patch
+          python3 /tmp/cdc-code.py
           python3 -m unittest public/nexbar/tests/test_nollie_cdc.py -v
           python3 -m unittest discover -s public/nexbar/tests -p 'test_*.py' -v
           python3 -m py_compile public/nexbar/nexbar-bridge.py
