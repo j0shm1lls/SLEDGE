@@ -5,7 +5,7 @@ export function NativePathPanel() {
     [Gauge, 'Steam Game Mode', 'Personalization writes Valve’s 17-LED interface.'],
     [Cpu, 'valve-leds shim', 'Captures color, brightness, effects and manual pixels.'],
     [RadioTower, 'NexBar bridge', 'Arbitrates safety, maps 17 → 24 and renders effects.'],
-    [Usb, 'Nollie1 hidraw', '65-byte GRB packets. OpenRGB is fallback only.'],
+    [Usb, 'Nollie1 CDC', '64-byte GRB serial reports. OpenRGB is fallback only.'],
   ] as const
   return <section className="panel native-panel" id="native">
     <div className="panel-head"><div><span className="eyebrow">Preferred path</span><h2>Steam owns the bar.</h2></div><span className="status-dot">NATIVE FIRST</span></div>
