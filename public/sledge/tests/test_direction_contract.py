@@ -3,8 +3,8 @@ import pathlib
 import unittest
 
 
-BRIDGE = pathlib.Path(__file__).parents[1] / 'nexbar-bridge.py'
-spec = importlib.util.spec_from_file_location('nexbar_bridge_direction_test', BRIDGE)
+BRIDGE = pathlib.Path(__file__).parents[1] / 'sledge-bridge.py'
+spec = importlib.util.spec_from_file_location('sledge_bridge_direction_test', BRIDGE)
 bridge = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(bridge)
 

@@ -2,13 +2,13 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DATA="$HOME/.local/lib/nexbar"
-CONF="$HOME/.config/nexbar/nexbar.conf.json"
+DATA="$HOME/.local/lib/sledge"
+CONF="$HOME/.config/sledge/sledge.conf.json"
 USER_UNITS="$HOME/.config/systemd/user"
 KREL="$(uname -r)"
 KMOD_DIR="/usr/lib/modules/$KREL"
 SHIM_DEST="$KMOD_DIR/updates/leds-valve-shim.ko"
-MODULES_LOAD_CONF="/etc/modules-load.d/nexbar.conf"
+MODULES_LOAD_CONF="/etc/modules-load.d/sledge.conf"
 WITH_SHIM=auto
 SHIM_ONLY=0
 ROOTFS_TOGGLED=0
@@ -77,7 +77,7 @@ disable_readonly_if_needed(){
 
 install_permissions(){
   disable_readonly_if_needed
-  sudo install -m 0644 "$HERE/kernel/99-nexbar.rules" /etc/udev/rules.d/99-nexbar.rules
+  sudo install -m 0644 "$HERE/kernel/99-sledge.rules" /etc/udev/rules.d/99-sledge.rules
   sudo udevadm control --reload-rules || true
   sudo udevadm trigger --subsystem-match=tty || true
   sudo udevadm trigger --subsystem-match=hidraw || true
@@ -180,7 +180,7 @@ install_or_repair_shim(){
   if shim_is_healthy; then
     warn "The current shim works, but it is not guaranteed to survive reboot."
   else
-    warn "Steam-native shim is not available; NexBar will use fallback behavior."
+    warn "Steam-native shim is not available; SLEDGE will use fallback behavior."
   fi
   return 0
 }
@@ -194,16 +194,16 @@ if [[ "$SHIM_ONLY" == 1 ]]; then
   exit 0
 fi
 
-say "Installing NexBar2 daemon"
+say "Installing SLEDGE daemon"
 mkdir -p "$DATA" "$(dirname "$CONF")" "$USER_UNITS"
-install -m 0755 "$HERE/nexbar-bridge.py" "$DATA/nexbar-bridge.py"
+install -m 0755 "$HERE/sledge-bridge.py" "$DATA/sledge-bridge.py"
 if [[ ! -f "$CONF" ]]; then
-  install -m 0644 "$HERE/nexbar.conf.json" "$CONF"
+  install -m 0644 "$HERE/sledge.conf.json" "$CONF"
   echo "Created $CONF"
 else
   echo "Preserved existing $CONF"
 fi
-install -m 0644 "$HERE/nexbar.service" "$USER_UNITS/nexbar.service"
+install -m 0644 "$HERE/sledge.service" "$USER_UNITS/sledge.service"
 install -m 0644 "$HERE/openrgb.service" "$USER_UNITS/openrgb.service"
 
 say "Installing Nollie/shim hardware permissions"
@@ -216,24 +216,24 @@ fi
 say "Checking Steam-native shim"
 install_or_repair_shim
 
-say "Starting NexBar2 user service"
+say "Starting SLEDGE user service"
 systemctl --user daemon-reload
-systemctl --user enable nexbar.service
-systemctl --user restart nexbar.service
+systemctl --user enable sledge.service
+systemctl --user restart sledge.service
 if command -v loginctl >/dev/null 2>&1 && command -v sudo >/dev/null 2>&1; then
   sudo loginctl enable-linger "$USER" 2>/dev/null || true
 fi
 
-if systemctl --user is-active --quiet nexbar.service; then
-  echo "NexBar user service is active."
+if systemctl --user is-active --quiet sledge.service; then
+  echo "SLEDGE user service is active."
 else
-  warn "NexBar service is not active yet; inspect: journalctl --user -u nexbar -n 50"
+  warn "SLEDGE service is not active yet; inspect: journalctl --user -u sledge -n 50"
 fi
 
 echo
-echo "NexBar2 installed."
+echo "SLEDGE installed."
 echo "Control/diagnostics: http://127.0.0.1:1873/"
-echo "Logs: journalctl --user -u nexbar -f"
+echo "Logs: journalctl --user -u sledge -f"
 echo "OpenRGB is optional and was not enabled by this installer."
 if shim_is_persisted; then
   echo "Steam-native shim is registered to load automatically on reboot."

@@ -6,7 +6,7 @@ const states: { id: SimState; title: string; note: string }[] = [
   { id: 'download', title: 'Downloading', note: 'Fallback fill + short pulse' },
   { id: 'paused', title: 'Paused', note: 'Fill held, pulse off' },
   { id: 'thermal', title: 'Overheat', note: '85 °C trip / 80 °C clear' },
-  { id: 'fallback', title: 'Fallback', note: 'Native unavailable · NexBar idle' },
+  { id: 'fallback', title: 'Fallback', note: 'Native unavailable · SLEDGE idle' },
 ]
 
 export function StateRail() {

@@ -40,9 +40,9 @@ export function Chassis() {
     physical = mapPhysical(logical, m.physical, m.mapping, m.reverse)
   }
 
-  return <section className="chassis-wrap" aria-label="Redux front-bar simulation">
+  return <section className="chassis-wrap" aria-label="SLEDGE reference LED hardware simulation">
     <div className="chassis">
-      <div className="chassis-top"><span>NEXGEN3D / REDUX</span><span className="indicator" aria-label="Power indicator on" /></div>
+      <div className="chassis-top"><span>SLEDGE / REFERENCE RIG</span><span className="indicator" aria-label="Power indicator on" /></div>
       <div className="vent-grid" />
       <div className="bar-well">
         <div className="led-strip" data-led-count={m.physical} style={{ gridTemplateColumns: `repeat(${m.physical}, minmax(0,1fr))` }}>

@@ -1,5 +1,5 @@
 [Unit]
-Description=OpenRGB SDK server (optional NexBar fallback)
+Description=OpenRGB SDK server (optional SLEDGE fallback)
 
 [Service]
 Type=simple

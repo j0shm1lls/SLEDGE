@@ -418,7 +418,7 @@ static int shim_probe(struct platform_device *pdev)
         active_leds = NULL;
         return ret;
     }
-    dev_info(&pdev->dev, "NexBar Valve-compatible LED shim registered\n");
+    dev_info(&pdev->dev, "SLEDGE Valve-compatible LED shim registered\n");
     return 0;
 }
 
@@ -459,6 +459,6 @@ module_exit(shim_exit);
 
 MODULE_AUTHOR("Valve Corporation");
 MODULE_AUTHOR("Anna Oake");
-MODULE_AUTHOR("NexBar contributors");
-MODULE_DESCRIPTION("Valve-compatible virtual 17-LED front bar shim for NexBar");
+MODULE_AUTHOR("SLEDGE contributors");
+MODULE_DESCRIPTION("Valve-compatible virtual 17-LED front bar shim for SLEDGE");
 MODULE_LICENSE("GPL");

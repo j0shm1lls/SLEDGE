@@ -1,19 +1,19 @@
-# NexBar2 Design
+# SLEDGE Design
 
 Date: 2026-09-02
 Status: Approved design, pending written-spec review
 Target hardware: NexGen3D Redux Steam Machine, BC-250 board, 24 WS2812 LEDs, Nollie1 controller
-Reference implementation: `j0shm1lls/NexBar` at `dad18f9`
+Reference implementation: `j0shm1lls/SLEDGE` at `dad18f9`
 
 ## 1. Product goal
 
-NexBar2 makes the Redux front light bar behave like a Steam Machine light bar while keeping the system maintainable on SteamOS.
+SLEDGE makes the Redux front light bar behave like a Steam Machine light bar while keeping the system maintainable on SteamOS.
 
-The preferred path is no longer a synthetic recreation of Steam behavior. NexBar2 will first expose the 17-LED `valve-leds` interface Steam expects, allow Steam Game Mode to own normal light-bar behavior through its Personalization UI, capture those writes through a kernel shim, map them to the physical 24-LED strip, and send the result to Nollie1.
+The preferred path is no longer a synthetic recreation of Steam behavior. SLEDGE will first expose the 17-LED `valve-leds` interface Steam expects, allow Steam Game Mode to own normal light-bar behavior through its Personalization UI, capture those writes through a kernel shim, map them to the physical 24-LED strip, and send the result to Nollie1.
 
 When Steam-native LED writes are unavailable or stop working, the daemon falls back to its own state engine and existing Steam download observation logic. The fallback must be automatic and visible in diagnostics.
 
-The daemon remains a single stdlib-only Python file for normal field updates. Updating `nexbar-bridge.py` must not require rebuilding the kernel module.
+The daemon remains a single stdlib-only Python file for normal field updates. Updating `sledge-bridge.py` must not require rebuilding the kernel module.
 
 ## 2. Confirmed machine behavior and scope
 
@@ -26,14 +26,14 @@ The daemon remains a single stdlib-only Python file for normal field updates. Up
 - Steam download progress tracking when native Steam pixel writes are not available.
 - Overheat override at 85 C with hysteresis recovery at 80 C.
 - Boot/Steam-not-running fallback animation.
-- NexBar local control/diagnostics page for advanced settings and fallback settings.
+- SLEDGE local control/diagnostics page for advanced settings and fallback settings.
 - Installer, user service, udev rules, optional kernel module build/install, and health diagnostics.
 - Preview application that accurately mirrors the daemon behavior and documents installation/diagnostics.
 
 ### Deliberately excluded
 
 - Fake RAM-missing, GPU-failure, SSD-missing, or memory-training POST patterns. Those states originate in Fremont firmware/EC hardware and are not truthfully observable on the BC-250 configuration.
-- Claims that NexBar provides pre-userspace BIOS diagnostics.
+- Claims that SLEDGE provides pre-userspace BIOS diagnostics.
 - Database, accounts, cloud services, or network dependencies.
 - Requiring OpenRGB when direct HID is available.
 
@@ -72,7 +72,7 @@ If native writes become stale or unavailable, control falls back without blankin
 
 ## 4. SteamOS native control strategy
 
-NexBar2 will ship a 17-LED kernel shim compatible with the public Valve LED ABI used by current SteamOS Game Mode integrations.
+SLEDGE will ship a 17-LED kernel shim compatible with the public Valve LED ABI used by current SteamOS Game Mode integrations.
 
 The shim must expose:
 
@@ -86,13 +86,13 @@ The daemon reads the snapshot device and renders any animated Steam effect serve
 
 ### Provenance and license boundary
 
-The shim design is based on the GPL-licensed `leds-valve-shim` implementation currently used by `rpf16rj/steamos-led-bar-release` and `caed1994/SteamOS-Utility-Center`. NexBar2 will preserve SPDX/license notices and add a provenance file identifying the upstream source and any NexBar-specific modifications.
+The shim design is based on the GPL-licensed `leds-valve-shim` implementation currently used by `rpf16rj/steamos-led-bar-release` and `caed1994/SteamOS-Utility-Center`. SLEDGE will preserve SPDX/license notices and add a provenance file identifying the upstream source and any SLEDGE-specific modifications.
 
 The Python daemon and web/preview code remain separately licensed from the kernel module. No GPL source is copied without its required license/provenance.
 
 ### Kernel update behavior
 
-The module is the one part of NexBar that can require rebuild/install work after a SteamOS kernel update. NexBar must detect and clearly report:
+The module is the one part of SLEDGE that can require rebuild/install work after a SteamOS kernel update. SLEDGE must detect and clearly report:
 
 - module missing,
 - module built for another kernel,
@@ -121,9 +121,9 @@ The daemon and TypeScript preview must use the same mapping semantics and fixtur
 
 ### Native Steam path
 
-When Steam writes manual progress pixels to the shim, those pixels are the progress source. NexBar does not estimate or overwrite the base progress fill.
+When Steam writes manual progress pixels to the shim, those pixels are the progress source. SLEDGE does not estimate or overwrite the base progress fill.
 
-If Steam itself provides a visible activity pulse in the captured frames, NexBar forwards it unchanged.
+If Steam itself provides a visible activity pulse in the captured frames, SLEDGE forwards it unchanged.
 
 ### Fallback path
 
@@ -156,7 +156,7 @@ The activity pulse is a brief brightness/color blend over the existing filled pi
 
 ## 7. Daemon design
 
-The distributable daemon stays in one file: `public/nexbar/nexbar-bridge.py`.
+The distributable daemon stays in one file: `public/sledge/sledge-bridge.py`.
 
 Internally it is organized into focused sections/classes so a field update still copies one file while the code remains maintainable:
 
@@ -206,7 +206,7 @@ Preserve the proven protocol behavior:
 - UPDATELEDS with zone fallback,
 - reconnect after server resets.
 
-NexBar must not require an OpenRGB process when direct HID succeeds.
+SLEDGE must not require an OpenRGB process when direct HID succeeds.
 
 ## 9. Configuration
 
@@ -242,7 +242,7 @@ Default conceptual structure:
 }
 ```
 
-The obsolete configurable long-sweep `laser_travel_s` behavior is removed from the new default model. Existing NexBar configs are migrated safely: the old `laser_period_s` maps to `pulse_period_s` where reasonable; `laser_travel_s` is ignored.
+The obsolete configurable long-sweep `laser_travel_s` behavior is removed from the new default model. Existing SLEDGE configs are migrated safely: the old `laser_period_s` maps to `pulse_period_s` where reasonable; `laser_travel_s` is ignored.
 
 ## 10. Local control and diagnostics
 
@@ -276,7 +276,7 @@ The browser preview remains a product simulator and installer/diagnostic guide. 
 
 The primary UI should explain two layers clearly:
 
-1. Steam-native control: Steam Personalization -> valve-leds shim -> NexBar bridge -> Nollie1.
+1. Steam-native control: Steam Personalization -> valve-leds shim -> SLEDGE bridge -> Nollie1.
 2. Fallback/override control: thermal safety, download fallback, mapping, backend health.
 
 Preview states include:
@@ -288,7 +288,7 @@ Preview states include:
 - thermal override,
 - native-shim unavailable/fallback active.
 
-Do not show unsupported POST fault-code states as if NexBar can produce them on this hardware.
+Do not show unsupported POST fault-code states as if SLEDGE can produce them on this hardware.
 
 The preview may expose demo controls for testing states, but those controls must be labeled as simulation.
 
@@ -298,9 +298,9 @@ The installer is SteamOS/immutable-root aware and must be idempotent.
 
 It installs:
 
-- `nexbar-bridge.py` under the user's local data directory,
+- `sledge-bridge.py` under the user's local data directory,
 - config under the user's XDG config directory,
-- a user `nexbar.service`,
+- a user `sledge.service`,
 - udev permissions needed for the selected Nollie HID device,
 - the optional/strongly-recommended Valve LED kernel shim when headers/build tools are available.
 
@@ -370,12 +370,12 @@ Some acceptance criteria require the Redux machine and cannot be proven in the d
 
 ## 15. Definition of done
 
-NexBar2 v1 is done when:
+SLEDGE v1 is done when:
 
 - the preview builds/typechecks/tests and accurately demonstrates the agreed behavior,
 - the Python daemon has repeatable unit tests for state/render logic,
 - the package installs without pip/runtime JS dependencies,
-- normal updates remain a one-file `nexbar-bridge.py` replacement,
+- normal updates remain a one-file `sledge-bridge.py` replacement,
 - Steam-native control is implemented and instrumented rather than assumed,
 - the fallback engine remains functional when native control is unavailable,
 - download activity uses the brief 0%-to-current-edge pulse rather than the old continuous sweep,
@@ -385,9 +385,9 @@ NexBar2 v1 is done when:
 
 ## 16. External references used for the design
 
-- `j0shm1lls/NexBar` (`dad18f9`) for the proven Nollie HID, OpenRGB, Steam CEF, ACF, and existing shim integration work.
+- `j0shm1lls/SLEDGE` (`dad18f9`) for the proven Nollie HID, OpenRGB, Steam CEF, ACF, and existing shim integration work.
 - `rpf16rj/steamos-led-bar-release` for a current public implementation showing Steam Game Mode Personalization driving a 17-LED Valve-compatible shim on non-native LED hardware.
 - `rpf16rj/steamos-led-wled` for a current shim-to-external-strip architecture.
 - `caed1994/SteamOS-Utility-Center` for a tested Valve-compatible shim, snapshot UAPI, Game Mode ownership model, and test coverage around Steam manual download pixels.
 
-These projects are references, not a reason to copy unrelated features. NexBar2 stays focused on the Redux + Nollie1 use case.
+These projects are references, not a reason to copy unrelated features. SLEDGE stays focused on the Redux + Nollie1 use case.

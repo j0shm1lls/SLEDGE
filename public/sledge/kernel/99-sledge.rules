@@ -1,4 +1,4 @@
-# NexBar Valve-compatible shim and Nollie1 permissions.
+# SLEDGE Valve-compatible shim and Nollie1 permissions.
 KERNEL=="valve-leds-shim", MODE="0666", TAG+="uaccess"
 SUBSYSTEM=="leds", KERNEL=="valve-leds*", MODE="0666", TAG+="uaccess"
 

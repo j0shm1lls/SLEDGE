@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""NexBar2 SteamOS front-bar bridge.
+"""SLEDGE SteamOS front-bar bridge.
 
 Target runtime is Python stdlib only. The file is intentionally self-contained so
 normal field updates are a one-file replacement plus service restart.
@@ -1061,7 +1061,7 @@ class OpenRGBBackend:
         sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         sock.settimeout(4)
         self.sock = sock
-        self._send(PKT_NAME, 0, b'NexBar2\x00')
+        self._send(PKT_NAME, 0, b'SLEDGE\x00')
         self._send(PKT_PROTO, 0, struct.pack('<I', CLIENT_PROTO))
         self._recv()
         self._send(PKT_COUNT, 0)
@@ -1169,7 +1169,7 @@ def select_backend(cfg: dict, forced: str = 'auto'):
             if forced == 'openrgb':
                 raise
             print(f'OpenRGB unavailable ({exc})', flush=True)
-    if os.environ.get('NEXBAR_ALLOW_NULL') == '1':
+    if os.environ.get('SLEDGE_ALLOW_NULL') == '1':
         return NullBackend()
     raise OSError('no Nollie CDC/HID and no OpenRGB backend available')
 
@@ -1430,7 +1430,7 @@ class _Cdp:
 
 _CEF_INSTALL = r"""
 (() => {
-  const K = "__nexbarDl3";
+  const K = "__sledgeDl3";
   const n = (v) => {
     if (typeof v === "number" && Number.isFinite(v)) return v;
     if (typeof v === "string") { const x = Number(v); return Number.isFinite(x) ? x : 0; }
@@ -1549,7 +1549,7 @@ _CEF_INSTALL = r"""
 
 _CEF_READ = r"""
 (() => {
-  const st = window.__nexbarDl3;
+  const st = window.__sledgeDl3;
   if (!st) return {ready: false, error: "not installed"};
   if (!st.ready) return {ready: false, error: st.error};
   const packed = typeof st.packItems === "function"
@@ -1740,9 +1740,9 @@ def save_config(path: Path, cfg: dict) -> None:
         except FileNotFoundError: pass
 
 
-CONTROL_HTML = r'''<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>NexBar2 Control</title><style>
+CONTROL_HTML = r'''<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>SLEDGE Control</title><style>
 body{font:16px system-ui;background:#0b0c10;color:#f4f7fb;max-width:820px;margin:auto;padding:24px}h1{margin-bottom:4px}p{color:#9aa6b5;line-height:1.5}.card{background:#13151c;border:1px solid #2a2e3a;border-radius:12px;padding:18px;margin:16px 0}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 20px}.row{display:flex;justify-content:space-between;gap:18px;padding:10px 0;border-bottom:1px solid #252935}.row:last-child{border:0}code{color:#8cc7ff}button,input,select{min-height:52px;font:inherit}input,select{box-sizing:border-box;width:100%;background:#0b0c10;color:#f4f7fb;border:1px solid #343947;border-radius:8px;padding:0 12px}input[type=color]{padding:5px}input[type=checkbox]{width:24px;min-height:24px}button{background:#4aa3ff;border:0;border-radius:8px;padding:0 18px;font-weight:700;cursor:pointer;transition:transform .08s ease,filter .15s ease,opacity .15s ease}button:hover{filter:brightness(1.06)}button:active{transform:translateY(2px) scale(.985)}button:disabled{opacity:.72;cursor:wait}label{display:grid;gap:7px;margin:6px 0}.check{display:flex;align-items:center;gap:10px;min-height:52px}.hint{font-size:13px;color:#7f8a9c}.toast{position:fixed;right:24px;bottom:24px;z-index:10;max-width:min(360px,calc(100vw - 48px));background:#13151c;color:#f4f7fb;border:1px solid #4aa3ff;border-radius:10px;padding:12px 16px;box-shadow:0 12px 36px #0008;opacity:0;transform:translateY(10px);pointer-events:none;transition:opacity .18s ease,transform .18s ease}.toast.show{opacity:1;transform:translateY(0)}.toast.error{border-color:#e24b4b}@media(prefers-reduced-motion:reduce){button,.toast{transition:none}button:active{transform:none}}@media(max-width:640px){.grid{grid-template-columns:1fr}.toast{right:16px;bottom:16px;max-width:calc(100vw - 32px)}}</style></head><body>
-<h1>NexBar2</h1><p>Steam Personalization is the preferred color/effect UI. This local page controls fallback behavior, physical mapping, safety thresholds and diagnostics.</p>
+<h1>SLEDGE</h1><p>Steam Personalization is the preferred color/effect UI. This local page controls fallback behavior, physical mapping, safety thresholds and diagnostics.</p>
 <div class="card" id="status">Loading…</div>
 <div class="card"><div class="grid">
 <label>Fallback color <input id="color" type="color"></label>
@@ -1756,7 +1756,7 @@ body{font:16px system-ui;background:#0b0c10;color:#f4f7fb;max-width:820px;margin
 <label>Pause → idle (s) <input id="pause" type="number" min="0" max="600" step="1"></label>
 <label>Activity pulse period (s) <input id="pulse" type="number" min="0.6" max="8" step="0.1"></label>
 <label>LED Direction <select id="direction"><option value="forward">Forward</option><option value="reverse">Reverse</option></select><span class="hint">Choose the direction that makes download progress fill the way you expect.</span></label>
-</div><p class="hint"><code>thermal.overheat_c</code> / <code>thermal.clear_c</code> use hysteresis. <code>download.pause_idle_s</code> applies only to explicit Steam pauses, not depot gaps.</p><button id="save">Save NexBar settings</button><div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div></div>
+</div><p class="hint"><code>thermal.overheat_c</code> / <code>thermal.clear_c</code> use hysteresis. <code>download.pause_idle_s</code> applies only to explicit Steam pauses, not depot gaps.</p><button id="save">Save SLEDGE settings</button><div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div></div>
 <script>
 const q=(id)=>document.getElementById(id);
 const fields={color:q('color'),effect:q('effect'),brightness:q('brightness'),physical:q('physical'),mapping:q('mapping'),backend:q('backend'),trip:q('trip'),clear:q('clear'),pause:q('pause'),pulse:q('pulse'),direction:q('direction')};
@@ -1764,7 +1764,7 @@ const save=q('save'),toast=q('toast');let saveResetTimer=null,toastTimer=null;
 function showToast(message,kind='ok'){toast.textContent=message;toast.className='toast show '+kind;clearTimeout(toastTimer);toastTimer=setTimeout(()=>{toast.className='toast'},2600)}
 async function refreshStatus(){const s=await fetch('/api/status').then(r=>r.json());q('status').innerHTML=Object.entries(s).map(([k,v])=>`<div class=row><code>${k}</code><span>${v??'—'}</span></div>`).join('')}
 async function loadConfig(){const c=await fetch('/api/config').then(r=>r.json());fields.color.value=c.idle.color;fields.effect.value=c.idle.effect;fields.brightness.value=c.idle.brightness;fields.physical.value=c.leds.physical;fields.mapping.value=c.leds.mapping;fields.backend.value=c.leds.backend;fields.trip.value=c.thermal.overheat_c;fields.clear.value=c.thermal.clear_c;fields.pause.value=c.download.pause_idle_s;fields.pulse.value=c.download.pulse_period_s;fields.direction.value=c.leds.reverse?'forward':'reverse'}
-save.onclick=async()=>{save.disabled=true;save.textContent='Saving…';clearTimeout(saveResetTimer);try{const c=await fetch('/api/config').then(r=>r.json());c.idle.color=fields.color.value;c.idle.effect=fields.effect.value;c.idle.brightness=+fields.brightness.value;c.leds.physical=+fields.physical.value;c.leds.mapping=fields.mapping.value;c.leds.backend=fields.backend.value;c.leds.reverse=fields.direction.value==='forward';c.thermal.overheat_c=+fields.trip.value;c.thermal.clear_c=+fields.clear.value;c.download.pause_idle_s=+fields.pause.value;c.download.pulse_period_s=+fields.pulse.value;const response=await fetch('/api/config',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(c)});if(!response.ok){let message='HTTP '+response.status;try{const data=await response.json();if(data&&data.error)message=data.error}catch(_){}throw new Error(message)}save.textContent='✓ Saved';showToast('NexBar settings saved!','ok');try{await loadConfig();await refreshStatus()}catch(_){}saveResetTimer=setTimeout(()=>{save.textContent='Save NexBar settings';save.disabled=false},1200)}catch(err){const message=err instanceof Error?err.message:String(err);save.textContent='Save NexBar settings';save.disabled=false;showToast('Save failed: '+message,'error')}};loadConfig();refreshStatus();setInterval(refreshStatus,1500)
+save.onclick=async()=>{save.disabled=true;save.textContent='Saving…';clearTimeout(saveResetTimer);try{const c=await fetch('/api/config').then(r=>r.json());c.idle.color=fields.color.value;c.idle.effect=fields.effect.value;c.idle.brightness=+fields.brightness.value;c.leds.physical=+fields.physical.value;c.leds.mapping=fields.mapping.value;c.leds.backend=fields.backend.value;c.leds.reverse=fields.direction.value==='forward';c.thermal.overheat_c=+fields.trip.value;c.thermal.clear_c=+fields.clear.value;c.download.pause_idle_s=+fields.pause.value;c.download.pulse_period_s=+fields.pulse.value;const response=await fetch('/api/config',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(c)});if(!response.ok){let message='HTTP '+response.status;try{const data=await response.json();if(data&&data.error)message=data.error}catch(_){}throw new Error(message)}save.textContent='✓ Saved';showToast('SLEDGE settings saved!','ok');try{await loadConfig();await refreshStatus()}catch(_){}saveResetTimer=setTimeout(()=>{save.textContent='Save SLEDGE settings';save.disabled=false},1200)}catch(err){const message=err instanceof Error?err.message:String(err);save.textContent='Save SLEDGE settings';save.disabled=false;showToast('Save failed: '+message,'error')}};loadConfig();refreshStatus();setInterval(refreshStatus,1500)
 </script></body></html>'''
 
 
@@ -1793,7 +1793,7 @@ def start_control_server(cfg_path: Path, status: RuntimeStatus, port: int) -> ht
     return server
 
 
-class NexBarDaemon:
+class SLEDGEDaemon:
     def __init__(self, cfg_path: Path, forced_backend: str = 'auto'):
         self.cfg_path = cfg_path
         self.cfg = load_config(cfg_path)
@@ -1883,7 +1883,7 @@ class NexBarDaemon:
         return physical
 
     def run(self) -> None:
-        print('nexbar running', flush=True)
+        print('sledge running', flush=True)
         print(f"download pause->idle {self.cfg['download']['pause_idle_s']}s, activity pulse {self.cfg['download']['pulse_period_s']}s", flush=True)
         print(f"control UI http://127.0.0.1:{self.cfg['ui']['port']}/", flush=True)
         period_s = 1.0 / 40.0
@@ -1910,8 +1910,8 @@ def _test_pattern(backend, count: int) -> None:
 
 
 def main(argv: Optional[list[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description='NexBar2 SteamOS front-bar bridge')
-    parser.add_argument('--config', default=str(Path.home()/'.config/nexbar/nexbar.conf.json'))
+    parser = argparse.ArgumentParser(description='SLEDGE SteamOS front-bar bridge')
+    parser.add_argument('--config', default=str(Path.home()/'.config/sledge/sledge.conf.json'))
     parser.add_argument('--backend', choices=('auto','cdc','hid','openrgb'), default='auto')
     parser.add_argument('--test', action='store_true')
     parser.add_argument('--set-color')
@@ -1931,7 +1931,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         try: _test_pattern(backend, int(cfg['leds']['physical']))
         finally: backend.close()
         return 0
-    NexBarDaemon(cfg_path, args.backend).run()
+    SLEDGEDaemon(cfg_path, args.backend).run()
     return 0
 
 

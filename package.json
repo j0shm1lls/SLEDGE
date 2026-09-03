@@ -1,5 +1,5 @@
 {
-  "name": "nexbar2",
+  "name": "sledge",
   "private": true,
   "sideEffects": false,
   "type": "module",
@@ -8,8 +8,8 @@
     "build": "tsr generate && vite build",
     "typecheck": "tsr generate && tsc --noEmit",
     "test": "node --experimental-strip-types --test src/lib/led-contract.test.ts",
-    "test:python": "python3 -m unittest discover -s public/nexbar/tests -p 'test_*.py' -v",
-    "package:nexbar": "node scripts/build-nexbar-zip.mjs"
+    "test:python": "python3 -m unittest discover -s public/sledge/tests -p 'test_*.py' -v",
+    "package:sledge": "node scripts/build-sledge-zip.mjs"
   },
   "dependencies": {
     "@radix-ui/react-slider": "^1.3.6",

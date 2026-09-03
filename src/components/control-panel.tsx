@@ -13,7 +13,7 @@ export function ControlPanel() {
   const paused = m.state === 'paused'
   return <section className="panel" id="customize">
     <div className="panel-head"><div><span className="eyebrow">Fallback & mapping</span><h2>Control what Steam doesn’t.</h2></div><span className="badge">LOCAL ONLY</span></div>
-    <p className="muted">When <b>Steam native</b> owns the bar, ordinary color and effect choices come from Game Mode Personalization. These controls define NexBar’s fallback behavior and physical mapping.</p>
+    <p className="muted">When <b>Steam native</b> owns the bar, ordinary color and effect choices come from Game Mode Personalization. These controls define SLEDGE’s fallback behavior and physical mapping.</p>
     <div className="control-grid">
       <label className="field"><span>Fallback color</span><div className="color-row"><input aria-label="Fallback color" type="color" value={m.color} onChange={(e) => m.patch({ color: e.target.value })} /><code>{m.color}</code></div></label>
       <div className="field"><span>Idle brightness <b>{m.brightness}%</b></span><Range label="Idle brightness" value={m.brightness} min={0} max={100} step={1} onValue={(brightness) => m.patch({ brightness })} /></div>

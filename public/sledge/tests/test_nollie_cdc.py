@@ -4,8 +4,8 @@ import tempfile
 import unittest
 
 
-BRIDGE = pathlib.Path(__file__).parents[1] / 'nexbar-bridge.py'
-spec = importlib.util.spec_from_file_location('nexbar_bridge_cdc_test', BRIDGE)
+BRIDGE = pathlib.Path(__file__).parents[1] / 'sledge-bridge.py'
+spec = importlib.util.spec_from_file_location('sledge_bridge_cdc_test', BRIDGE)
 bridge = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(bridge)
 
@@ -40,7 +40,7 @@ class NollieCdcContractTests(unittest.TestCase):
         self.assertTrue(bridge._is_nollie_cdc_blob(blob))
 
     def test_05_udev_rule_covers_exact_cdc_tty(self):
-        rules = (BRIDGE.parent / 'kernel' / '99-nexbar.rules').read_text()
+        rules = (BRIDGE.parent / 'kernel' / '99-sledge.rules').read_text()
         self.assertIn('SUBSYSTEM=="tty"', rules)
         self.assertIn('ATTRS{idVendor}=="16d5"', rules)
         self.assertIn('ATTRS{idProduct}=="2a01"', rules)

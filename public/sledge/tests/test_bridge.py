@@ -5,8 +5,8 @@ import struct
 import tempfile
 import unittest
 
-BRIDGE = pathlib.Path(__file__).parents[1] / 'nexbar-bridge.py'
-spec = importlib.util.spec_from_file_location('nexbar_bridge', BRIDGE)
+BRIDGE = pathlib.Path(__file__).parents[1] / 'sledge-bridge.py'
+spec = importlib.util.spec_from_file_location('sledge_bridge', BRIDGE)
 bridge = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(bridge)
 
@@ -22,7 +22,7 @@ class ConfigTests(unittest.TestCase):
 
     def test_legacy_laser_config_migrates_period_and_discards_travel(self):
         with tempfile.TemporaryDirectory() as td:
-            path = pathlib.Path(td) / 'nexbar.json'
+            path = pathlib.Path(td) / 'sledge.json'
             path.write_text(json.dumps({'download': {'laser_period_s': 2.5, 'laser_travel_s': 1.7}}))
             cfg = bridge.load_config(path)
             self.assertEqual(cfg['download']['pulse_period_s'], 2.5)
@@ -426,7 +426,7 @@ class TemperatureSensorTests(unittest.TestCase):
 class LegacyPauseMigrationTests(unittest.TestCase):
     def test_old_default_pause_30_without_travel_migrates_to_10(self):
         with tempfile.TemporaryDirectory() as td:
-            path = pathlib.Path(td) / 'nexbar.json'
+            path = pathlib.Path(td) / 'sledge.json'
             path.write_text(json.dumps({'download': {'pause_idle_s': 30}}))
             cfg = bridge.load_config(path)
             self.assertEqual(cfg['download']['pause_idle_s'], 10)
@@ -486,13 +486,13 @@ class DaemonStatusUpdateTests(unittest.TestCase):
             def exists(self): return True
             def read(self): return bridge.ValveSnapshot.empty(seq=2)
         with tempfile.TemporaryDirectory() as td:
-            cfg_path = pathlib.Path(td) / 'nexbar.json'
+            cfg_path = pathlib.Path(td) / 'sledge.json'
             cfg_path.write_text(json.dumps(bridge.DEFAULT_CONFIG))
             with mock.patch.object(bridge, 'select_backend', return_value=FakeBackend()), \
                  mock.patch.object(bridge, 'start_control_server', return_value=FakeControl()), \
                  mock.patch.object(bridge, 'read_hottest_temperature', return_value=67.0), \
                  mock.patch.object(bridge, 'steam_running', return_value=True):
-                daemon = bridge.NexBarDaemon(cfg_path)
+                daemon = bridge.SLEDGEDaemon(cfg_path)
                 daemon.shim = FakeShim()
                 daemon.frame(10.0)
                 status = daemon.status.snapshot()
@@ -525,5 +525,5 @@ class CefMarkerPolicyTests(unittest.TestCase):
 
     def test_daemon_run_does_not_create_cef_marker_unconditionally(self):
         import inspect
-        source = inspect.getsource(bridge.NexBarDaemon.run)
+        source = inspect.getsource(bridge.SLEDGEDaemon.run)
         self.assertNotIn('ensure_cef_marker', source)

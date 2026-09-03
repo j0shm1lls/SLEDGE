@@ -3,7 +3,7 @@ import unittest
 
 ROOT = pathlib.Path(__file__).parents[1]
 SRC = ROOT / 'kernel' / 'leds-valve-shim.c'
-RULES = ROOT / 'kernel' / '99-nexbar.rules'
+RULES = ROOT / 'kernel' / '99-sledge.rules'
 PROV = ROOT / 'kernel' / 'PROVENANCE.md'
 
 

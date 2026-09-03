@@ -37,4 +37,4 @@ export const useMachine = create<MachineStore>()(persist((set) => ({
   patch: (next) => set({ ...next, demoRunning: false }),
   applyDemoFrame: (state, progress) => set((current) => current.demoRunning ? { state, progress } : current),
   restartDemo: () => set((current) => ({ state: 'boot', progress: 0.04, demoRunning: true, demoEpoch: current.demoEpoch + 1 })),
-}), { name: 'nexbar2-preview' }))
+}), { name: 'sledge-preview' }))
