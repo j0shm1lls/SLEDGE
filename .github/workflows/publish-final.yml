@@ -1,23 +1,20 @@
-name: direction-refresh-green
+name: direction-refresh-verify
 on:
   push:
     branches: [upload/nexbar2-final]
 permissions:
-  contents: write
+  contents: read
 jobs:
-  green:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Apply guarded fixes and verify WIP
+        with:
+          ref: wip/nexbar2-v1
+      - name: Verify committed WIP state
         shell: bash
         run: |
           set -euo pipefail
-          cp .bootstrap/direction-refresh-code.py /tmp/direction-refresh-code.py
-          git fetch origin wip/nexbar2-v1
-          git checkout -B direction-refresh-work origin/wip/nexbar2-v1
-          python3 /tmp/direction-refresh-code.py
-
           npm ci
           python3 -m unittest discover -s public/nexbar/tests -p 'test_*.py' -v
           npm test
@@ -25,12 +22,5 @@ jobs:
           npm run build
           git restore --source=HEAD --worktree --staged .output 2>/dev/null || true
           python3 -m py_compile public/nexbar/nexbar-bridge.py
-          node scripts/build-nexbar-zip.mjs
           unzip -t public/nexbar/nexbar.zip
           git diff --check
-
-          git config user.name "nexbar2-build"
-          git config user.email "actions@users.noreply.github.com"
-          git add public/nexbar/nexbar-bridge.py public/nexbar/nexbar.zip src/components/control-panel.tsx
-          git commit -m "fix: correct LED direction labels and preserve unsaved controls"
-          git push origin HEAD:wip/nexbar2-v1
