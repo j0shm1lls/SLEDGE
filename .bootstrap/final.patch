@@ -1,5 +1,5 @@
 diff --git a/package.json b/package.json
-index d8193ef..1453106 100644
+index d8193ef..7947971 100644
 --- a/package.json
 +++ b/package.json
 @@ -5,8 +5,8 @@
@@ -19,7 +19,7 @@ index d8193ef..1453106 100644
      "vite": "^8.2.0",
 -    "@playwright/test": "^1.62.0"
 +    "@playwright/test": "^1.62.0",
-+    "@tanstack/router-cli": "^1.170.0"
++    "@tanstack/router-cli": "^1.167.33"
    }
  }
 diff --git a/src/lib/led-contract.test.ts b/src/lib/led-contract.test.ts
