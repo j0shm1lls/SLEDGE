@@ -1,0 +1,51 @@
+name: bootstrap-nexbar2
+on:
+  push:
+    branches: [feat/nexbar2-v1]
+permissions:
+  contents: write
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack verified workspace
+        run: tar -xzf .bootstrap/nexbar2.tar.gz
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install web dependencies
+        run: npm install
+      - name: Contract tests
+        run: |
+          npm test
+          npm run test:python
+          python3 -m py_compile public/nexbar/nexbar-bridge.py
+          bash -n public/nexbar/install.sh startup.sh
+      - name: Build preview and package
+        run: |
+          npm run typecheck
+          npm run build
+          npm run package:nexbar
+          unzip -t public/nexbar/nexbar.zip
+      - name: Compile shim against Ubuntu headers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y linux-headers-generic
+          KDIR=$(ls -d /usr/src/linux-headers-*-generic | sort -V | tail -1)
+          make -C public/nexbar/kernel KDIR="$KDIR"
+      - name: Browser smoke
+        run: |
+          npx playwright install --with-deps chromium
+          npx playwright test
+      - name: Publish final feature branch
+        run: |
+          rm -rf .bootstrap .github/workflows/bootstrap.yml
+          git config user.name "nexbar2-build"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: build Steam-native-first NexBar2"
+          git push origin HEAD:feat/nexbar2-v1
