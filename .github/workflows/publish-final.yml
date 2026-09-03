@@ -27,7 +27,7 @@ jobs:
           text = browser.read_text()
           text = text.replace('/Make the front bar feel native/i', '/Make custom lighting feel native/i')
           needle = "  await expect(page.locator('.led')).toHaveCount(24)\n"
-          replacement = needle + "  await expect(page.locator('.hero-hammer')).toBeVisible()\n  await expect(page.locator('.hammer-led')).toHaveCount(24)\n  await expect(page.getByRole('link', { name: 'SLEDGE' })).toBeVisible()\n"
+          replacement = needle + "  await expect(page.locator('.hero-hammer')).toBeVisible()\n  await expect(page.locator('.hammer-led')).toHaveCount(24)\n  await expect(page.getByRole('link', { name: 'SLEDGE', exact: true })).toBeVisible()\n"
           text = text.replace(needle, replacement)
           browser.write_text(text)
 
