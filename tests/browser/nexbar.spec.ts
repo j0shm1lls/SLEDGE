@@ -23,12 +23,18 @@ test('starts with 24 physical LEDs and demo can be restarted', async ({ page }) 
   await expect(page.getByRole('button', { name: /^Restart demo/ })).toHaveClass(/active/)
 })
 
-test('download, mapping, pause, effect, and thermal controls are interactive', async ({ page }) => {
+test('download, mapping, direction, pause, effect, and thermal controls are interactive', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: /^Downloading/ }).click()
   await page.getByRole('radio', { name: 'nearest' }).click()
   await expect(page.getByRole('radio', { name: 'nearest' })).toHaveAttribute('data-state', 'on')
   await expect(page.getByText(/17 → 24 mapping/)).toBeVisible()
+
+  await expect(page.getByText('Choose the direction that makes download progress fill the way you expect.')).toBeVisible()
+  await page.getByRole('radio', { name: 'Reverse' }).click()
+  await expect(page.getByRole('radio', { name: 'Reverse' })).toHaveAttribute('data-state', 'on')
+  await page.getByRole('radio', { name: 'Forward' }).click()
+  await expect(page.getByRole('radio', { name: 'Forward' })).toHaveAttribute('data-state', 'on')
 
   await page.getByRole('checkbox', { name: 'Pause download' }).check()
   await expect(page.getByRole('button', { name: /^Paused/ })).toHaveClass(/active/)
