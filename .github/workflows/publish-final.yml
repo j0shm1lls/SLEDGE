@@ -1,18 +1,10 @@
-name: direction-refresh-red
+name: nexbar2-staging-manual
 on:
-  push:
-    branches: [upload/nexbar2-final]
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  red:
+  staging-note:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: wip/nexbar2-v1
-      - name: Confirm regressions fail before implementation
-        run: |
-          set -euo pipefail
-          python3 -m unittest public.nexbar.tests.test_direction_contract -v
-          npm test
+      - run: echo "Automated staging is disabled; active development is on wip/nexbar2-v1."
