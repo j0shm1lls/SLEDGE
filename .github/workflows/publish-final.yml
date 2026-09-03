@@ -21,7 +21,7 @@ jobs:
           if [ -f .bootstrap/cdc-code.patch ]; then cp .bootstrap/cdc-code.patch /tmp/cdc-code.patch; fi
           git fetch origin wip/nexbar2-v1
           git checkout -B cdc-work origin/wip/nexbar2-v1
-          git apply /tmp/cdc-test.patch
+          git apply --recount /tmp/cdc-test.patch
 
           set +e
           python3 -m unittest public/nexbar/tests/test_nollie_cdc.py -v >/tmp/cdc-red.log 2>&1
@@ -40,7 +40,7 @@ jobs:
             exit 0
           fi
 
-          git apply /tmp/cdc-code.patch
+          git apply --recount /tmp/cdc-code.patch
           python3 -m unittest public/nexbar/tests/test_nollie_cdc.py -v
           python3 -m unittest discover -s public/nexbar/tests -p 'test_*.py' -v
           python3 -m py_compile public/nexbar/nexbar-bridge.py
