@@ -1,17 +1,37 @@
-name: diagnostics-cdc-green
+name: cleanup-generated-output
 on:
   push:
     branches: [upload/nexbar2-final]
 permissions:
-  contents: read
+  contents: write
 jobs:
-  verify:
+  cleanup:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: wip/nexbar2-v1
-      - name: Verify CDC preview diagnostics
+      - name: Remove generated preview output from version control
+        shell: bash
         run: |
-          npm ci
-          npm test
+          set -euo pipefail
+          git config user.name "nexbar2-build"
+          git config user.email "actions@users.noreply.github.com"
+          echo 'Tracked generated paths before cleanup:'
+          git ls-files .output test-results playwright-report || true
+          if git ls-files .output | grep -q .; then
+            git rm -r --cached .output
+          fi
+          if git ls-files test-results | grep -q .; then
+            git rm -r --cached test-results
+          fi
+          if git ls-files playwright-report | grep -q .; then
+            git rm -r --cached playwright-report
+          fi
+          git diff --cached --name-only
+          if git diff --cached --quiet; then
+            echo 'No tracked generated output remains.'
+          else
+            git commit -m "chore: stop tracking generated preview output"
+            git push origin HEAD:wip/nexbar2-v1
+          fi
