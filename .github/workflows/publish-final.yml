@@ -1,0 +1,75 @@
+name: publish-nexbar2-final
+on:
+  push:
+    branches: [upload/nexbar2-final]
+permissions:
+  contents: write
+jobs:
+  verify-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reassemble exact tested source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/nexbar-preserve
+          if [ -d docs ]; then cp -a docs /tmp/nexbar-preserve/docs; fi
+          cat \
+            .bootstrap/final.part00 \
+            .bootstrap/final.part01 \
+            .bootstrap/final.part02 \
+            .bootstrap/final.part03 \
+            .bootstrap/final.part04 \
+            .bootstrap/final.part05 \
+            .bootstrap/final.part06 \
+            .bootstrap/final.part07 \
+            .bootstrap/final.part08a \
+            .bootstrap/final.part08b \
+            | base64 -d > /tmp/nexbar2-final.tar.gz
+          echo "9cd33055fa61bda135d988837a81d36dfcf02caf668470380adb472988212fad  /tmp/nexbar2-final.tar.gz" | sha256sum -c -
+          tar -tzf /tmp/nexbar2-final.tar.gz >/dev/null
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          tar -xzf /tmp/nexbar2-final.tar.gz
+          if [ -d /tmp/nexbar-preserve/docs ]; then cp -a /tmp/nexbar-preserve/docs ./docs; fi
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install web dependencies
+        run: npm install
+      - name: Contract tests
+        run: |
+          npm test
+          npm run test:python
+          python3 -m py_compile public/nexbar/nexbar-bridge.py
+          bash -n public/nexbar/install.sh startup.sh
+          git diff --check
+      - name: Build preview and release package
+        run: |
+          npm run typecheck
+          npm run build
+          npm run package:nexbar
+          unzip -t public/nexbar/nexbar.zip
+      - name: Compile Valve LED shim against Ubuntu headers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y linux-headers-generic
+          KDIR=$(ls -d /usr/src/linux-headers-*-generic | sort -V | tail -1)
+          make -C public/nexbar/kernel KDIR="$KDIR"
+      - name: Browser smoke at desktop and mobile sizes
+        run: |
+          npx playwright install --with-deps chromium
+          npx playwright test
+      - name: Publish verified feature tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf public/nexbar/kernel/.tmp_versions public/nexbar/kernel/*.o public/nexbar/kernel/*.ko public/nexbar/kernel/*.mod public/nexbar/kernel/*.mod.c public/nexbar/kernel/Module.symvers public/nexbar/kernel/modules.order
+          git config user.name "nexbar2-build"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: publish verified Steam-native-first NexBar2"
+          git push origin HEAD:feat/nexbar2-v1
