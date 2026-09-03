@@ -45,7 +45,7 @@ jobs:
               ('nexbar', 'sledge'),
           ]
           for p in Path('.').rglob('*'):
-              if not p.is_file() or '.git' in p.parts or p.suffix in {'.zip', '.png', '.jpg', '.jpeg', '.webp', '.ko'}:
+              if not p.is_file() or '.git' in p.parts or p.as_posix() == 'src/lib/led-contract.test.ts' or p.suffix in {'.zip', '.png', '.jpg', '.jpeg', '.webp', '.ko'}:
                   continue
               try:
                   text = p.read_text()
@@ -452,12 +452,10 @@ jobs:
           extra = '.hero-hammer{position:relative;min-width:0;isolation:isolate}.hero-hammer svg{position:relative;z-index:2;display:block;width:100%;height:auto;filter:drop-shadow(0 26px 32px #000a)}.hammer-aura{position:absolute;inset:15% 5% 8%;border-radius:50%;background:radial-gradient(circle,#4aa3ff2b 0,#4aa3ff0b 45%,transparent 70%);filter:blur(18px);z-index:0}.hammer-led{filter:drop-shadow(0 0 5px var(--hammer-led)) drop-shadow(0 0 11px var(--hammer-led));transition:fill 40ms linear}.hammer-caption{display:flex;justify-content:space-between;gap:16px;margin-top:-12px;padding:0 10%;font:500 10px/1 var(--font-mono);letter-spacing:.1em;color:var(--color-muted)}'
           if extra not in s:
               s = s.replace(marker, extra + marker)
-          s = s.replace('@media(max-width:900px){main{padding:0 16px}', '@media(max-width:900px){main{padding:0 16px}')
           s = s.replace('.hero{grid-template-columns:1fr;padding-top:52px}', '.hero{grid-template-columns:minmax(0,1fr);padding-top:52px;gap:18px}.hero-hammer{max-width:620px;margin:0 auto}')
           p.write_text(s)
           PY
 
-          # Ensure package metadata/scripts use SLEDGE names after the global replacement.
           python3 - <<'PY'
           import json
           from pathlib import Path
@@ -465,9 +463,8 @@ jobs:
           data = json.loads(p.read_text())
           data['name'] = 'sledge'
           scripts = data['scripts']
-          if 'package:sledge' not in scripts and 'package:nexbar' in scripts:
-              scripts['package:sledge'] = scripts.pop('package:nexbar')
           scripts['test:python'] = "python3 -m unittest discover -s public/sledge/tests -p 'test_*.py' -v"
+          scripts.pop('package:nexbar', None)
           scripts['package:sledge'] = 'node scripts/build-sledge-zip.mjs'
           p.write_text(json.dumps(data, indent=2) + '\n')
           PY
