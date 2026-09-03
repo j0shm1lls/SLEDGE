@@ -4,7 +4,9 @@ NexBar2 maps Steam's 17 logical front-bar LEDs to the 24 WS2812B LEDs in a NexGe
 
 ## Preferred signal path
 
-`Steam Game Mode Personalization -> valve-leds[0..16] shim -> nexbar-bridge.py -> 17-to-24 mapping -> Nollie1 hidraw`
+`Steam Game Mode Front Lights -> valve-leds[0..16] shim -> nexbar-bridge.py -> 17-to-24 mapping -> Nollie1 16d5:2a01 CDC serial`
+
+For the current Nollie1 `16d5:2a01`, NexBar prefers the stable CDC device under `/dev/serial/by-id/` and speaks the controller's 115200-baud 64-byte GRB protocol directly. Other known Nollie HID variants remain supported, and OpenRGB is fallback only.
 
 When Steam writes the Valve-compatible shim, Steam owns ordinary color, brightness, effects, and manual pixel frames. NexBar translates that state to the physical strip and keeps the 85 C thermal safety override above it. If native shim control is unavailable, NexBar falls back to its Steam CEF/ACF download observer and configured idle behavior.
 
@@ -13,20 +15,29 @@ When Steam writes the Valve-compatible shim, Steam owns ordinary color, brightne
 From Desktop Mode, unpack `nexbar.zip` and run:
 
 ```bash
-./install.sh
+./install.sh --with-shim
 ```
 
-The installer preserves an existing config, installs the NexBar user service and Nollie/shim udev rules, and checks whether the Steam-native shim is already healthy. It does **not** rebuild a healthy shim and it does not enable OpenRGB. If the shim is missing and matching kernel headers are available, the normal installer builds it once. If headers are missing, the daemon still installs and can run its fallback path.
+`--with-shim` is recommended on a Redux/BC-250 once matching running-kernel headers are available because it treats Steam-native support as required instead of silently accepting fallback-only operation. Plain `./install.sh` remains tolerant: it installs the daemon even when a missing shim cannot be built.
+
+The installer preserves an existing config, installs the NexBar user service, installs the Nollie/shim udev rules, and checks two separate things about the kernel shim:
+
+1. **Runtime health:** `/dev/valve-leds-shim` and `valve-leds[0..16]` exist now.
+2. **Reboot persistence:** a matching-vermagic module is installed at `/usr/lib/modules/$(uname -r)/updates/leds-valve-shim.ko` and `/etc/modules-load.d/nexbar.conf` requests `leds-valve-shim` at boot.
+
+That distinction matters when a shim was loaded manually with `insmod`: a working current session is not considered a completed install until the module is also persisted for the running kernel. The installer does not unload a healthy shim just to make it persistent; it installs/registers the matching module for the next boot while Steam keeps using the current device.
+
+The user service is enabled and restarted during install, and linger is enabled when available so the user manager can bring NexBar up automatically. OpenRGB is installed only as an optional service template and is not enabled.
 
 NexBar creates the Steam CEF remote-debugging marker only if the fallback observer actually needs CEF and cannot connect. A native Steam setup therefore does not enable CEF debugging unnecessarily.
 
-Open **Settings > Personalization** in Game Mode and change a light-bar setting. Then check:
+Open **Settings > Customization > Front Lights** in Game Mode and change a light-bar setting. Then check:
 
 ```bash
 journalctl --user -u nexbar -f
 ```
 
-Native success means the control page reports `steam-native`, the shim sequence is greater than 1, and the bar follows a color/effect change from Steam.
+Native success means the control page reports `steam-native`, the shim sequence is greater than 1, and the physical bar follows a color/effect change from Steam.
 
 ## Normal NexBar update
 
@@ -42,17 +53,19 @@ with the new `nexbar-bridge.py`, then restart the user service:
 systemctl --user restart nexbar.service
 ```
 
-The kernel module only needs attention when the running SteamOS kernel changes or diagnostics report that the shim is missing or incomplete.
+Rerunning the full installer also restarts `nexbar.service`, so an updated bridge takes effect immediately. Existing `~/.config/nexbar/nexbar.conf.json` settings are preserved.
+
+The kernel module only needs attention when the running SteamOS kernel changes or diagnostics report that the shim is missing/incomplete.
 
 ## Kernel update / shim repair
 
-If `valve-leds[0]` through `[16]` disappear after a SteamOS kernel update, install the headers that match the **running** kernel and run:
+A SteamOS kernel update creates a new `/usr/lib/modules/<kernel>/` tree, so the old kernel's `.ko` cannot be reused. If `valve-leds[0]` through `[16]` disappear after an update, make sure headers match the **running** kernel and run:
 
 ```bash
 ./install.sh --repair-shim
 ```
 
-`--repair-shim` rebuilds/reinstalls only the kernel module. It does not overwrite the daemon, config, or service files. `./install.sh --with-shim` can be used for a full install where shim availability is required; it fails instead of silently continuing if the requested shim cannot be built.
+`--repair-shim` rebuilds/reinstalls only the kernel module, refreshes its boot-load registration, and leaves the daemon, config, and user service files alone. `./install.sh --with-shim` can be used for a full install where shim availability is required; it fails instead of silently continuing if the requested persistent shim cannot be established.
 
 The shim source is GPL-2.0+ and its provenance is documented in `kernel/PROVENANCE.md`.
 
@@ -62,8 +75,8 @@ The shim source is GPL-2.0+ and its provenance is documented in `kernel/PROVENAN
 - Boot fallback: Steam blue breathing, never white.
 - Idle fallback: Steam blue, 25%, solid by default.
 - Download fallback: filled region only; once progress is at least 10%, a quick activity pulse starts at physical LED 0 and travels only to the current filled edge about every 2 seconds. Paused downloads hold the fill with no pulse.
-- Mapping: `stretch`, `nearest`, `center`, plus physical reverse.
-- Direct hidraw is preferred. OpenRGB SDK on `127.0.0.1:6742` is fallback only.
+- Mapping: `stretch`, `nearest`, `center`, plus **LED Direction: Forward / Reverse** for whole-strip orientation.
+- Nollie1 `16d5:2a01` CDC serial is preferred on the proven hardware. Other Nollie HID variants are retained; OpenRGB SDK on `127.0.0.1:6742` is fallback only.
 
 Fremont RAM/GPU/SSD/memory-training POST colors are intentionally not emulated because the BC-250 firmware cannot truthfully expose those pre-userspace states to NexBar.
 
@@ -71,19 +84,22 @@ Fremont RAM/GPU/SSD/memory-training POST colors are intentionally not emulated b
 
 Open `http://127.0.0.1:1873/` on the Steam Machine. The page shows current owner, backend/device, shim health/sequence/age, download source/progress/pause state, hottest CPU/GPU temperature, thermal latch, mapping, and physical LED count.
 
-Fallback controls include color, effect, brightness, physical count, mapping/reverse, backend preference, 85/80 thresholds, pause-to-idle timeout, and pulse period. When Steam-native ownership is active, ordinary color/effect choices still come from Steam Personalization.
+Fallback controls include color, effect, brightness, physical count, mapping, **LED Direction**, backend preference, 85/80 thresholds, pause-to-idle timeout, and pulse period. When Steam-native ownership is active, ordinary color/effect choices still come from Steam's Front Lights controls.
+
+The Save button provides pressed/saving/saved feedback and a success/error toast. Unsaved form edits are not overwritten by the live status poll.
 
 ## Expected journal lines
 
-A healthy startup should include equivalents of:
+A healthy Nollie1 CDC startup should include equivalents of:
 
 ```text
+cdc /dev/serial/by-id/usb-nollie.cn_Nollie1_...-if00 (...) 115200 8N1 leds=24
 nexbar running
 control UI http://127.0.0.1:1873/
-hidraw /dev/hidraw... (...) leds=24
+owner -> steam-native
 ```
 
-If direct HID is unavailable and OpenRGB fallback is running, the backend line reports OpenRGB instead. If native Steam control is unavailable and the fallback download observer is needed, you may also see:
+If CDC is not the controller variant present, NexBar can use a supported Nollie HID device. If direct Nollie access is unavailable and OpenRGB fallback is running, the backend line reports OpenRGB instead. If native Steam control is unavailable and the fallback download observer is needed, you may also see:
 
 ```text
 Steam CEF SharedJSContext connected (fallback download source)
@@ -91,13 +107,31 @@ Steam CEF SharedJSContext connected (fallback download source)
 
 The configured download policy is a 10-second explicit-pause-to-idle timeout with an approximately 2.0-second activity-pulse period.
 
-## Acceptance checklist on the Redux
+## Persistence checks before reboot
 
-1. `/sys/class/leds/valve-leds[0]` through `[16]` exist.
-2. `/dev/valve-leds-shim` returns the VLED v1 snapshot and sequence advances past 1 after a Game Mode light-bar change.
-3. Steam Personalization changes reach the Nollie strip.
-4. A download is represented either by Steam manual pixels or by the fallback progress observer.
-5. Pausing a fallback download stops the activity pulse immediately; an explicit pause idles after 10 seconds.
-6. A test temperature at/above 85 C trips pure red and stays latched until at/below 80 C.
-7. Direct hidraw remains lit for at least 120 seconds; NexBar rewrites MOS about every 1.5 seconds and continues pushing frames so the controller watchdog cannot fade a static bar.
-8. Cancel/uninstall with no local download files returns to idle; an actively paused session is not misclassified as cancel.
+After first install, these should succeed:
+
+```bash
+systemctl --user is-enabled nexbar.service
+systemctl --user is-active nexbar.service
+modinfo -n leds-valve-shim
+cat /etc/modules-load.d/nexbar.conf
+ls -l /dev/serial/by-id/usb-nollie.cn_Nollie1_*-if00
+```
+
+`modinfo -n leds-valve-shim` should resolve to the running kernel's `/usr/lib/modules/.../updates/leds-valve-shim.ko`, and the modules-load file should contain `leds-valve-shim`.
+
+## Reboot acceptance checklist on the Redux
+
+After a reboot, verify the persistent path rather than relying on the session that performed the install:
+
+1. `lsmod | grep leds_valve_shim` shows the shim loaded automatically.
+2. `/sys/class/leds/valve-leds[0]` through `[16]` and `/dev/valve-leds-shim` exist before doing another manual `insmod`.
+3. `systemctl --user is-active nexbar.service` reports `active`.
+4. `journalctl --user -u nexbar -b` shows the Nollie1 CDC `/dev/serial/by-id/...-if00` backend and `nexbar running`.
+5. Game Mode **Settings > Customization > Front Lights** is present, and changing Solid/Rainbow/Breath/Patrol, color, brightness, or speed updates the physical bar.
+6. A Steam download fills the 24-LED physical bar in the selected LED Direction and behaves like the native Steam Machine front bar.
+7. Leave a static Front Lights state active for at least 120 seconds. With `nexbar.service` running, the Nollie1 must remain under NexBar control and must not fall back to its firmware breathing behavior.
+8. Pausing a fallback-observed download stops the activity pulse immediately; an explicit pause idles after 10 seconds.
+9. A test temperature at/above 85 C trips pure red and stays latched until at/below 80 C.
+10. Cancel/uninstall with no local download files returns to idle; an actively paused session is not misclassified as cancel.
