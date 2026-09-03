@@ -4,9 +4,11 @@ import { ActivityPulse, OFF, STEAM_BLUE, mapPhysical, progressFill, updateTherma
 
 test('mapping is 17 logical to 24 physical and reverse happens last', () => {
   const logical = Array.from({ length: 17 }, (_, i) => ({ r: i, g: 0, b: 0 }))
+  const before = structuredClone(logical)
   const forward = mapPhysical(logical, 24, 'nearest', false)
   assert.equal(forward.length, 24)
   assert.deepEqual(mapPhysical(logical, 24, 'nearest', true), [...forward].reverse())
+  assert.deepEqual(logical, before, 'physical direction must not mutate Steam logical pixels')
 })
 
 test('center mapping pads 3 left and 4 right for 17 to 24', () => {
@@ -71,9 +73,13 @@ test('preview exposes the approved demo and advanced fallback controls', async (
   const rail = await readFile(fileURLToPath(new URL('components/state-rail.tsx', root)), 'utf8')
   const demo = await readFile(fileURLToPath(new URL('lib/demo.ts', root)), 'utf8').catch(() => '')
 
-  for (const label of ['Fallback effect', 'Physical LEDs', 'Trip temperature', 'Clear temperature', 'Pause download']) {
+  for (const label of ['Fallback effect', 'Physical LEDs', 'Trip temperature', 'Clear temperature', 'Pause download', 'LED Direction']) {
     assert.ok(control.includes(label), `missing ${label}`)
   }
+  assert.ok(control.includes('Forward'))
+  assert.ok(control.includes('Reverse'))
+  assert.ok(control.includes('Choose the direction that makes download progress fill the way you expect.'))
+  assert.ok(!control.includes('Reverse physical orientation'))
   assert.ok(machine.includes('demoRunning'))
   assert.ok(machine.includes('restartDemo'))
   assert.ok(rail.includes('Restart demo'))
