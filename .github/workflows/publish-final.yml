@@ -1,36 +1,17 @@
-name: persistence-green
+name: install-preview-red
 on:
   push:
     branches: [upload/nexbar2-final]
 permissions:
-  contents: write
+  contents: read
 jobs:
-  green:
+  red:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: wip/nexbar2-v1
-      - name: Verify persistence flow and package
-        shell: bash
+      - name: Confirm install preview contract fails before implementation
         run: |
-          set -euo pipefail
           npm ci
-          node scripts/build-nexbar-zip.mjs
-          python3 -m unittest discover -s public/nexbar/tests -p 'test_*.py' -v
-          bash -n public/nexbar/install.sh
-          sh -n public/nexbar/install.sh
-          python3 -m py_compile public/nexbar/nexbar-bridge.py
           npm test
-          npm run typecheck
-          npm run build
-          git restore --source=HEAD --worktree --staged .output src/routeTree.gen.ts 2>/dev/null || true
-          unzip -t public/nexbar/nexbar.zip
-          git diff --check
-          git config user.name "nexbar2-build"
-          git config user.email "actions@users.noreply.github.com"
-          git add public/nexbar/nexbar.zip
-          if ! git diff --cached --quiet; then
-            git commit -m "build: refresh persistent install package"
-            git push origin HEAD:wip/nexbar2-v1
-          fi
