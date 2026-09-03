@@ -1,37 +1,38 @@
-name: cleanup-generated-output
+name: final-release-verify
 on:
   push:
     branches: [upload/nexbar2-final]
 permissions:
-  contents: write
+  contents: read
 jobs:
-  cleanup:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: wip/nexbar2-v1
-      - name: Remove generated preview output from version control
+      - name: Verify exact release state
         shell: bash
         run: |
           set -euo pipefail
-          git config user.name "nexbar2-build"
-          git config user.email "actions@users.noreply.github.com"
-          echo 'Tracked generated paths before cleanup:'
-          git ls-files .output test-results playwright-report || true
-          if git ls-files .output | grep -q .; then
-            git rm -r --cached .output
+          echo "WIP_HEAD=$(git rev-parse HEAD)"
+          npm ci
+          npx playwright install --with-deps chromium
+          python3 -m unittest discover -s public/nexbar/tests -p 'test_*.py' -v
+          python3 -m py_compile public/nexbar/nexbar-bridge.py
+          bash -n public/nexbar/install.sh
+          sh -n public/nexbar/install.sh
+          npm test
+          npm run typecheck
+          npm run build
+          npm run package:nexbar
+          unzip -t public/nexbar/nexbar.zip
+          npx playwright test
+          if git ls-files .output test-results playwright-report | grep -q .; then
+            echo 'ERROR: generated preview/test output is still tracked' >&2
+            git ls-files .output test-results playwright-report >&2
+            exit 1
           fi
-          if git ls-files test-results | grep -q .; then
-            git rm -r --cached test-results
-          fi
-          if git ls-files playwright-report | grep -q .; then
-            git rm -r --cached playwright-report
-          fi
-          git diff --cached --name-only
-          if git diff --cached --quiet; then
-            echo 'No tracked generated output remains.'
-          else
-            git commit -m "chore: stop tracking generated preview output"
-            git push origin HEAD:wip/nexbar2-v1
-          fi
+          git diff --check
+          git diff --exit-code -- public/nexbar/nexbar.zip
+          test -z "$(git status --porcelain)"
