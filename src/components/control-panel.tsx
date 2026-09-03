@@ -29,7 +29,7 @@ export function ControlPanel() {
     <div className="seg-row"><span>17 → {m.physical} mapping</span><ToggleGroup.Root aria-label="LED mapping" type="single" className="toggles" value={m.mapping} onValueChange={(mapping) => mapping && m.patch({ mapping: mapping as typeof m.mapping })}>
       {['stretch','nearest','center'].map((x) => <ToggleGroup.Item key={x} value={x}>{x}</ToggleGroup.Item>)}
     </ToggleGroup.Root></div>
-    <div className="seg-row"><span><b>LED Direction</b><small className="muted">Choose the direction that makes download progress fill the way you expect.</small></span><ToggleGroup.Root aria-label="LED Direction" type="single" className="toggles" value={m.reverse ? 'reverse' : 'forward'} onValueChange={(direction) => direction && m.patch({ reverse: direction === 'reverse' })}>
+    <div className="seg-row"><span><b>LED Direction</b><small className="muted">Choose the direction that makes download progress fill the way you expect.</small></span><ToggleGroup.Root aria-label="LED Direction" type="single" className="toggles" value={m.reverse ? 'forward' : 'reverse'} onValueChange={(direction) => direction && m.patch({ reverse: direction === 'forward' })}>
       <ToggleGroup.Item value="forward">Forward</ToggleGroup.Item><ToggleGroup.Item value="reverse">Reverse</ToggleGroup.Item>
     </ToggleGroup.Root></div>
     <div className="check-grid">
