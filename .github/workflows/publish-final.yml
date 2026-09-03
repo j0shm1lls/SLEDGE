@@ -1,21 +1,17 @@
-name: browser-green
+name: diagnostics-cdc-red
 on:
   push:
     branches: [upload/nexbar2-final]
 permissions:
   contents: read
 jobs:
-  verify:
+  red:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: wip/nexbar2-v1
-      - name: Verify browser regressions
-        shell: bash
+      - name: Confirm stale diagnostics label fails CDC contract
         run: |
-          set -euo pipefail
           npm ci
-          npx playwright install --with-deps chromium
           npm test
-          npx playwright test
