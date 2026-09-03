@@ -1,15 +1,36 @@
-name: save-feedback-red
+name: save-feedback-green
 on:
   push:
     branches: [upload/nexbar2-final]
 permissions:
-  contents: read
+  contents: write
 jobs:
-  red:
+  green:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: wip/nexbar2-v1
-      - name: Confirm save feedback contract fails before implementation
-        run: python3 -m unittest public.nexbar.tests.test_control_save_feedback -v
+      - name: Apply save feedback and verify WIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp .bootstrap/save-feedback-code.py /tmp/save-feedback-code.py
+          git fetch origin wip/nexbar2-v1
+          git checkout -B save-feedback-work origin/wip/nexbar2-v1
+          python3 /tmp/save-feedback-code.py
+
+          npm ci
+          python3 -m unittest discover -s public/nexbar/tests -p 'test_*.py' -v
+          npm test
+          npm run typecheck
+          npm run build
+          git restore --source=HEAD --worktree --staged .output src/routeTree.gen.ts 2>/dev/null || true
+          python3 -m py_compile public/nexbar/nexbar-bridge.py
+          node scripts/build-nexbar-zip.mjs
+          unzip -t public/nexbar/nexbar.zip
+          git diff --check
+
+          git config user.name "nexbar2-build"
+          git config user.email "actions@users.noreply.github.com"
+          git add public/nexbar/nexbar-bridge.py public/nexbar/nexbar.zip
+          git commit -m "feat: add save confirmation feedback"
+          git push origin HEAD:wip/nexbar2-v1
