@@ -1,17 +1,31 @@
-name: cdc-preview-red
+name: final-release-verify
 on:
   push:
     branches: [upload/nexbar2-final]
 permissions:
   contents: read
 jobs:
-  red:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: wip/nexbar2-v1
-      - name: Confirm stale HID preview fails CDC contract
+      - name: Verify full NexBar2 release state
+        shell: bash
         run: |
+          set -euo pipefail
           npm ci
+          npx playwright install --with-deps chromium
+          python3 -m unittest discover -s public/nexbar/tests -p 'test_*.py' -v
+          python3 -m py_compile public/nexbar/nexbar-bridge.py
+          bash -n public/nexbar/install.sh
+          sh -n public/nexbar/install.sh
           npm test
+          npm run typecheck
+          npm run build
+          git restore --source=HEAD --worktree --staged .output src/routeTree.gen.ts 2>/dev/null || true
+          npm run package:nexbar
+          unzip -t public/nexbar/nexbar.zip
+          npx playwright test
+          git diff --check
