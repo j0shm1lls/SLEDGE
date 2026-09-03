@@ -40,10 +40,9 @@ jobs:
           python-version: '3.13'
       - name: Install web dependencies
         run: npm install
-      - name: Contract tests
+      - name: Core contract checks
         run: |
           npm test
-          npm run test:python
           python3 -m py_compile public/nexbar/nexbar-bridge.py
           bash -n public/nexbar/install.sh startup.sh
           git diff --check
@@ -53,6 +52,8 @@ jobs:
           npm run build
           npm run package:nexbar
           unzip -t public/nexbar/nexbar.zip
+      - name: Python and package contract tests
+        run: npm run test:python
       - name: Compile Valve LED shim against Ubuntu headers
         run: |
           sudo apt-get update
