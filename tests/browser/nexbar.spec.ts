@@ -4,7 +4,7 @@ for (const state of ['Steam native', 'Downloading', 'Paused', 'Overheat', 'Fallb
   test(`preview can simulate ${state}`, async ({ page }) => {
     const errors: string[] = []
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()) })
-    await page.goto('/')
+    await page.goto('/', { waitUntil: 'networkidle' })
     await expect(page.getByRole('heading', { name: /Make the front bar feel native/i })).toBeVisible()
     await page.getByRole('button', { name: new RegExp(`^${state}`) }).click()
     await expect(page.getByRole('button', { name: new RegExp(`^${state}`) })).toHaveClass(/active/)
@@ -14,7 +14,7 @@ for (const state of ['Steam native', 'Downloading', 'Paused', 'Overheat', 'Fallb
 }
 
 test('starts with 24 physical LEDs and demo can be restarted', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/', { waitUntil: 'networkidle' })
   await expect(page.locator('.led-strip')).toHaveAttribute('data-led-count', '24')
   await expect(page.locator('.led')).toHaveCount(24)
   await page.getByRole('button', { name: /^Downloading/ }).click()
@@ -24,7 +24,7 @@ test('starts with 24 physical LEDs and demo can be restarted', async ({ page }) 
 })
 
 test('download, mapping, direction, pause, effect, and thermal controls are interactive', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/', { waitUntil: 'networkidle' })
   await page.getByRole('button', { name: /^Downloading/ }).click()
   await page.getByRole('radio', { name: 'nearest' }).click()
   await expect(page.getByRole('radio', { name: 'nearest' })).toHaveAttribute('data-state', 'on')
@@ -48,7 +48,7 @@ test('download, mapping, direction, pause, effect, and thermal controls are inte
 
 test('mobile touch targets stay at least 52px tall', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', 'mobile-only geometry check')
-  await page.goto('/')
+  await page.goto('/', { waitUntil: 'networkidle' })
   const box = await page.getByRole('button', { name: /^Steam native/ }).boundingBox()
   expect(box?.height ?? 0).toBeGreaterThanOrEqual(52)
   await expect(page.locator('main')).toBeVisible()
