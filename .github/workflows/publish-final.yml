@@ -1,31 +1,53 @@
-name: final-release-verify
+name: mobile-overflow-diagnostic
 on:
   push:
     branches: [upload/nexbar2-final]
 permissions:
   contents: read
 jobs:
-  verify:
+  diagnose:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: wip/nexbar2-v1
-      - name: Verify full NexBar2 release state
+      - name: Measure remaining mobile overflow
         shell: bash
         run: |
           set -euo pipefail
           npm ci
           npx playwright install --with-deps chromium
-          python3 -m unittest discover -s public/nexbar/tests -p 'test_*.py' -v
-          python3 -m py_compile public/nexbar/nexbar-bridge.py
-          bash -n public/nexbar/install.sh
-          sh -n public/nexbar/install.sh
-          npm test
-          npm run typecheck
-          npm run build
-          git restore --source=HEAD --worktree --staged .output src/routeTree.gen.ts 2>/dev/null || true
-          npm run package:nexbar
-          unzip -t public/nexbar/nexbar.zip
-          npx playwright test
-          git diff --check
+          npm run dev > /tmp/nexbar-dev.log 2>&1 &
+          DEV_PID=$!
+          trap 'kill "$DEV_PID" 2>/dev/null || true; rm -f .diag.mjs' EXIT
+          for i in $(seq 1 60); do
+            curl -fsS http://127.0.0.1:8080/ >/dev/null && break
+            sleep 1
+          done
+          cat > .diag.mjs <<'JS'
+          import { chromium } from 'playwright'
+          const browser = await chromium.launch({ headless: true })
+          const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
+          await page.goto('http://127.0.0.1:8080/', { waitUntil: 'networkidle' })
+          const data = await page.evaluate(() => {
+            const cw = document.documentElement.clientWidth
+            const sw = document.documentElement.scrollWidth
+            const offenders = [...document.querySelectorAll('*')].map(el => {
+              const r = el.getBoundingClientRect()
+              const cs = getComputedStyle(el)
+              return {
+                tag: el.tagName.toLowerCase(), cls: el.className?.toString?.() || '',
+                text: (el.textContent || '').trim().replace(/\s+/g,' ').slice(0,120),
+                left: +r.left.toFixed(1), right: +r.right.toFixed(1), width: +r.width.toFixed(1),
+                scrollWidth: el.scrollWidth, clientWidth: el.clientWidth,
+                overflowX: cs.overflowX, minWidth: cs.minWidth, whiteSpace: cs.whiteSpace,
+              }
+            }).filter(x => x.right > cw + .5 || x.left < -.5 || x.scrollWidth > x.clientWidth + 1)
+              .sort((a,b) => Math.max(b.right-cw,b.scrollWidth-b.clientWidth)-Math.max(a.right-cw,a.scrollWidth-a.clientWidth))
+              .slice(0,40)
+            return { clientWidth:cw, scrollWidth:sw, offenders }
+          })
+          console.log(JSON.stringify(data,null,2))
+          await browser.close()
+          JS
+          node .diag.mjs
