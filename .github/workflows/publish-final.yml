@@ -27,7 +27,7 @@ jobs:
             .bootstrap/final.part08a \
             .bootstrap/final.part08b \
             | base64 -d > /tmp/nexbar2-final.tar.gz
-          echo "9cd33055fa61bda135d988837a81d36dfcf02caf668470380adb472988212fad  /tmp/nexbar2-final.tar.gz" | sha256sum -c -
+          echo "9cd5708d87151dddd6ff0a611a85ed8f4e9ad080d2938b93ddaa19cda5e013c6  /tmp/nexbar2-final.tar.gz" | sha256sum -c -
           tar -tzf /tmp/nexbar2-final.tar.gz >/dev/null
           find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
           tar -xzf /tmp/nexbar2-final.tar.gz
