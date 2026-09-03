@@ -1,15 +1,34 @@
-name: sledge-legacy-name-red
+name: sledge-legacy-name-green
 on:
   push:
     branches: [upload/nexbar2-final]
 permissions:
-  contents: read
+  contents: write
 jobs:
-  red:
+  green:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: wip/sledge-v1
-      - name: Confirm docs reject legacy branding
-        run: python3 -m unittest public.sledge.tests.test_rebrand_docs -v
+      - name: Remove final legacy brand reference and verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "sledge-build"
+          git config user.email "actions@users.noreply.github.com"
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('docs/superpowers/specs/2026-09-02-sledge-design.md')
+          s = p.read_text()
+          s = s.replace(
+              'the prior SLEDGE/NexBar history for OpenRGB, Steam CEF/ACF, shim integration, and support for legacy Nollie HID variants; the validated `16d5:2a01` controller uses CDC serial.',
+              'the earlier project history for OpenRGB, Steam CEF/ACF, shim integration, and support for legacy Nollie HID variants; the validated `16d5:2a01` controller uses CDC serial.'
+          )
+          p.write_text(s)
+          PY
+          python3 -m unittest public.sledge.tests.test_rebrand_docs -v
+          git diff --check
+          git add docs/superpowers/specs/2026-09-02-sledge-design.md
+          git commit -m "docs: remove final legacy project branding"
+          git push origin HEAD:wip/sledge-v1
