@@ -1,38 +1,10 @@
-name: final-release-verify
+name: nexbar2-staging-manual
 on:
-  push:
-    branches: [upload/nexbar2-final]
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  verify:
+  staging-note:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: wip/nexbar2-v1
-      - name: Verify exact release state
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "WIP_HEAD=$(git rev-parse HEAD)"
-          npm ci
-          npx playwright install --with-deps chromium
-          python3 -m unittest discover -s public/nexbar/tests -p 'test_*.py' -v
-          python3 -m py_compile public/nexbar/nexbar-bridge.py
-          bash -n public/nexbar/install.sh
-          sh -n public/nexbar/install.sh
-          npm test
-          npm run typecheck
-          npm run build
-          npm run package:nexbar
-          unzip -t public/nexbar/nexbar.zip
-          npx playwright test
-          if git ls-files .output test-results playwright-report | grep -q .; then
-            echo 'ERROR: generated preview/test output is still tracked' >&2
-            git ls-files .output test-results playwright-report >&2
-            exit 1
-          fi
-          git diff --check
-          git diff --exit-code -- public/nexbar/nexbar.zip
-          test -z "$(git status --porcelain)"
+      - run: echo "Automated staging is disabled; active development is on wip/nexbar2-v1."
