@@ -1,28 +1,10 @@
-name: persistence-release-verify
+name: nexbar2-staging-manual
 on:
-  push:
-    branches: [upload/nexbar2-final]
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  verify:
+  staging-note:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: wip/nexbar2-v1
-      - name: Verify committed persistence release state
-        shell: bash
-        run: |
-          set -euo pipefail
-          npm ci
-          python3 -m unittest discover -s public/nexbar/tests -p 'test_*.py' -v
-          bash -n public/nexbar/install.sh
-          sh -n public/nexbar/install.sh
-          python3 -m py_compile public/nexbar/nexbar-bridge.py
-          npm test
-          npm run typecheck
-          npm run build
-          git restore --source=HEAD --worktree --staged .output src/routeTree.gen.ts 2>/dev/null || true
-          unzip -t public/nexbar/nexbar.zip
-          git diff --check
+      - run: echo "Automated staging is disabled; active development is on wip/nexbar2-v1."
