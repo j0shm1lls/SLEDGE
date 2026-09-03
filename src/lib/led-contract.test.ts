@@ -80,6 +80,8 @@ test('preview exposes the approved demo and advanced fallback controls', async (
   assert.ok(control.includes('Reverse'))
   assert.ok(control.includes('Choose the direction that makes download progress fill the way you expect.'))
   assert.ok(!control.includes('Reverse physical orientation'))
+  assert.ok(control.includes("value={m.reverse ? 'forward' : 'reverse'}"), 'Forward must present the currently-correct reversed physical behavior')
+  assert.ok(control.includes("reverse: direction === 'forward'"), 'selecting Forward must persist the currently-correct reversed physical behavior')
   assert.ok(machine.includes('demoRunning'))
   assert.ok(machine.includes('restartDemo'))
   assert.ok(rail.includes('Restart demo'))
