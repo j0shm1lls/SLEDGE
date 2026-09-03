@@ -105,11 +105,14 @@ test('preview preferred path matches the hardware-proven CDC transport', async (
   const { readFile } = await import('node:fs/promises')
   const native = await readFile(new URL('../components/native-path-panel.tsx', import.meta.url), 'utf8')
   const route = await readFile(new URL('../routes/index.tsx', import.meta.url), 'utf8')
+  const diagnostics = await readFile(new URL('../components/diagnostics-panel.tsx', import.meta.url), 'utf8')
   assert.ok(native.includes('Nollie1 CDC'))
   assert.ok(native.includes('64-byte GRB'))
   assert.ok(!native.includes('Nollie1 hidraw'))
   assert.ok(route.includes('NOLLIE1 / CDC PRIMARY'))
   assert.ok(!route.includes('NOLLIE1 / HID PRIMARY'))
+  assert.ok(diagnostics.includes('cdc · Nollie1'))
+  assert.ok(!diagnostics.includes('hidraw · Nollie1'))
 })
 
 test('fallback idle renderer supports solid, breath, rainbow, and patrol', async () => {
