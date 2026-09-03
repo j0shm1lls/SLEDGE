@@ -1,4 +1,4 @@
-name: hydration-diagnostic
+name: browser-root-cause-diagnostic
 on:
   push:
     branches: [upload/nexbar2-final]
@@ -11,7 +11,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: wip/nexbar2-v1
-      - name: Diagnose browser hydration
+      - name: Diagnose click timing and mobile overflow
         shell: bash
         run: |
           set -euo pipefail
@@ -21,42 +21,54 @@ jobs:
           DEV_PID=$!
           trap 'kill "$DEV_PID" 2>/dev/null || true; rm -f .diag.mjs' EXIT
           for i in $(seq 1 60); do
-            if curl -fsS http://127.0.0.1:8080/ >/tmp/nexbar.html; then break; fi
+            curl -fsS http://127.0.0.1:8080/ >/dev/null && break
             sleep 1
           done
-          echo '=== DEV LOG ==='
-          cat /tmp/nexbar-dev.log
-          echo '=== HTML SCRIPT SRCS ==='
-          strings /tmp/nexbar.html | grep -o 'src="[^"]*"' | head -20 || true
           cat > .diag.mjs <<'JS'
           import { chromium } from 'playwright'
           const browser = await chromium.launch({ headless: true })
-          const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
-          const consoles = []
-          const errors = []
-          page.on('console', m => consoles.push(`${m.type()}: ${m.text()}`))
-          page.on('pageerror', e => errors.push(String(e)))
-          page.on('requestfailed', r => errors.push(`requestfailed ${r.url()} ${r.failure()?.errorText}`))
-          await page.goto('http://127.0.0.1:8080/', { waitUntil: 'networkidle' })
-          await page.waitForTimeout(500)
-          const before = await page.evaluate(() => ({
-            readyState: document.readyState,
-            scripts: [...document.scripts].map(s => ({ src: s.src, type: s.type, text: s.textContent?.slice(0, 160) })),
-            storage: localStorage.getItem('nexbar2-preview'),
-            downloading: [...document.querySelectorAll('button')].find(b => b.textContent?.startsWith('Downloading'))?.className,
-            demo: [...document.querySelectorAll('button')].find(b => b.textContent?.startsWith('Restart demo'))?.className,
-          }))
-          console.log('BEFORE', JSON.stringify(before, null, 2))
-          await page.getByRole('button', { name: /^Downloading/ }).click()
-          await page.waitForTimeout(500)
-          const after = await page.evaluate(() => ({
-            storage: localStorage.getItem('nexbar2-preview'),
-            downloading: [...document.querySelectorAll('button')].find(b => b.textContent?.startsWith('Downloading'))?.className,
-            demo: [...document.querySelectorAll('button')].find(b => b.textContent?.startsWith('Restart demo'))?.className,
-          }))
-          console.log('AFTER', JSON.stringify(after, null, 2))
-          console.log('CONSOLE', JSON.stringify(consoles, null, 2))
-          console.log('ERRORS', JSON.stringify(errors, null, 2))
+          for (const delay of [0, 25, 100, 250, 500]) {
+            const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+            const page = await context.newPage()
+            const errors = []
+            page.on('pageerror', e => errors.push(String(e)))
+            await page.goto('http://127.0.0.1:8080/')
+            if (delay) await page.waitForTimeout(delay)
+            await page.getByRole('button', { name: /^Downloading/ }).click()
+            await page.waitForTimeout(300)
+            const result = await page.evaluate(() => ({
+              state: JSON.parse(localStorage.getItem('nexbar2-preview') || '{}')?.state?.state,
+              downloading: [...document.querySelectorAll('button')].find(b => b.textContent?.startsWith('Downloading'))?.className,
+              demo: [...document.querySelectorAll('button')].find(b => b.textContent?.startsWith('Restart demo'))?.className,
+            }))
+            console.log(`CLICK_DELAY_${delay}MS`, JSON.stringify(result), 'ERRORS', JSON.stringify(errors))
+            await context.close()
+          }
+
+          const mobile = await browser.newPage({ viewport: { width: 390, height: 844 } })
+          await mobile.goto('http://127.0.0.1:8080/', { waitUntil: 'networkidle' })
+          await mobile.waitForTimeout(300)
+          const overflow = await mobile.evaluate(() => {
+            const cw = document.documentElement.clientWidth
+            const sw = document.documentElement.scrollWidth
+            const offenders = [...document.querySelectorAll('*')].map(el => {
+              const r = el.getBoundingClientRect()
+              const cs = getComputedStyle(el)
+              return {
+                tag: el.tagName.toLowerCase(),
+                cls: el.className?.toString?.() || '',
+                text: (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 100),
+                left: Math.round(r.left * 10) / 10,
+                right: Math.round(r.right * 10) / 10,
+                width: Math.round(r.width * 10) / 10,
+                scrollWidth: el.scrollWidth,
+                overflowX: cs.overflowX,
+                minWidth: cs.minWidth,
+              }
+            }).filter(x => x.right > cw + .5 || x.left < -.5).slice(0, 30)
+            return { clientWidth: cw, scrollWidth: sw, offenders }
+          })
+          console.log('MOBILE_OVERFLOW', JSON.stringify(overflow, null, 2))
           await browser.close()
           JS
           node .diag.mjs
