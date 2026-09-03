@@ -1,5 +1,4 @@
 name: bootstrap-nexbar2
-# one-shot verifier; deletes itself after a successful publish
 on:
   push:
     branches: [feat/nexbar2-v1]
@@ -10,8 +9,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Unpack verified workspace
-        run: tar -xzf .bootstrap/nexbar2.tar.gz
+      - name: Reassemble and verify workspace
+        run: |
+          cat .bootstrap/part00 .bootstrap/part01 .bootstrap/part02 .bootstrap/part03 > /tmp/nexbar2.tar.gz
+          test "$(wc -c < /tmp/nexbar2.tar.gz)" -eq 86036
+          tar -tzf /tmp/nexbar2.tar.gz >/dev/null
+          tar -xzf /tmp/nexbar2.tar.gz
       - uses: actions/setup-node@v4
         with:
           node-version: 22
