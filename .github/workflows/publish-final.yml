@@ -1,74 +1,17 @@
-name: browser-root-cause-diagnostic
+name: cdc-preview-red
 on:
   push:
     branches: [upload/nexbar2-final]
 permissions:
   contents: read
 jobs:
-  diagnose:
+  red:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: wip/nexbar2-v1
-      - name: Diagnose click timing and mobile overflow
-        shell: bash
+      - name: Confirm stale HID preview fails CDC contract
         run: |
-          set -euo pipefail
           npm ci
-          npx playwright install --with-deps chromium
-          npm run dev > /tmp/nexbar-dev.log 2>&1 &
-          DEV_PID=$!
-          trap 'kill "$DEV_PID" 2>/dev/null || true; rm -f .diag.mjs' EXIT
-          for i in $(seq 1 60); do
-            curl -fsS http://127.0.0.1:8080/ >/dev/null && break
-            sleep 1
-          done
-          cat > .diag.mjs <<'JS'
-          import { chromium } from 'playwright'
-          const browser = await chromium.launch({ headless: true })
-          for (const delay of [0, 25, 100, 250, 500]) {
-            const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
-            const page = await context.newPage()
-            const errors = []
-            page.on('pageerror', e => errors.push(String(e)))
-            await page.goto('http://127.0.0.1:8080/')
-            if (delay) await page.waitForTimeout(delay)
-            await page.getByRole('button', { name: /^Downloading/ }).click()
-            await page.waitForTimeout(300)
-            const result = await page.evaluate(() => ({
-              state: JSON.parse(localStorage.getItem('nexbar2-preview') || '{}')?.state?.state,
-              downloading: [...document.querySelectorAll('button')].find(b => b.textContent?.startsWith('Downloading'))?.className,
-              demo: [...document.querySelectorAll('button')].find(b => b.textContent?.startsWith('Restart demo'))?.className,
-            }))
-            console.log(`CLICK_DELAY_${delay}MS`, JSON.stringify(result), 'ERRORS', JSON.stringify(errors))
-            await context.close()
-          }
-
-          const mobile = await browser.newPage({ viewport: { width: 390, height: 844 } })
-          await mobile.goto('http://127.0.0.1:8080/', { waitUntil: 'networkidle' })
-          await mobile.waitForTimeout(300)
-          const overflow = await mobile.evaluate(() => {
-            const cw = document.documentElement.clientWidth
-            const sw = document.documentElement.scrollWidth
-            const offenders = [...document.querySelectorAll('*')].map(el => {
-              const r = el.getBoundingClientRect()
-              const cs = getComputedStyle(el)
-              return {
-                tag: el.tagName.toLowerCase(),
-                cls: el.className?.toString?.() || '',
-                text: (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 100),
-                left: Math.round(r.left * 10) / 10,
-                right: Math.round(r.right * 10) / 10,
-                width: Math.round(r.width * 10) / 10,
-                scrollWidth: el.scrollWidth,
-                overflowX: cs.overflowX,
-                minWidth: cs.minWidth,
-              }
-            }).filter(x => x.right > cw + .5 || x.left < -.5).slice(0, 30)
-            return { clientWidth: cw, scrollWidth: sw, offenders }
-          })
-          console.log('MOBILE_OVERFLOW', JSON.stringify(overflow, null, 2))
-          await browser.close()
-          JS
-          node .diag.mjs
+          npm test
