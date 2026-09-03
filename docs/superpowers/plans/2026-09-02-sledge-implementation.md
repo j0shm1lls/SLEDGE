@@ -1,10 +1,10 @@
-# SLEDGE Implementation Plan
+# SLEDGE — Steam Lighting Effects Daemon for Generic Equipment — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build SLEDGE as a Steam-native-first 17-to-24 LED bridge for the Redux + Nollie1, with automatic fallback behavior, 85 C/80 C thermal protection, the new short download activity pulse, a distributable SteamOS package, and a behaviorally accurate React preview.
+**Goal:** Build SLEDGE (Steam Lighting Effects Daemon for Generic Equipment) as a Steam-native-first 17-logical-to-N-physical LED bridge, validated on BC-250 + Nollie1 + 24 WS2812B pixels, with automatic fallback behavior, 85 C/80 C thermal protection, the new short download activity pulse, a distributable SteamOS package, and a behaviorally accurate React preview.
 
-**Architecture:** One shared behavioral contract governs source arbitration, 17-logical-to-N-physical mapping, and the physical-only download pulse. The target daemon remains a single stdlib-only Python file for field updates, while the preview reimplements the same pure behavior against shared fixtures. A GPL Valve-compatible kernel shim exposes the 17 LED interface Steam Game Mode expects; direct Nollie HID is primary and OpenRGB is fallback.
+**Architecture:** One shared behavioral contract governs source arbitration, 17-logical-to-N-physical mapping, and the physical-only download pulse. The target daemon remains a single stdlib-only Python file for field updates, while the preview reimplements the same pure behavior against shared fixtures. A GPL Valve-compatible kernel shim exposes the 17 LED interface Steam Game Mode expects; exact Nollie1 `16d5:2a01` CDC serial is primary on the validated hardware, known Nollie HID variants are retained, and OpenRGB is fallback.
 
 **Tech Stack:** Python 3 stdlib, Linux kernel module C, systemd user units, udev, React 19, TanStack Start, TypeScript, Tailwind CSS v4, Zustand, Vitest, Vite.
 
@@ -12,9 +12,9 @@
 
 ## Global Constraints
 
-- Target hardware is the NexGen3D Redux with ASUS ROG BC-250, Nollie1, and 24 WS2812B LEDs.
+- Validated hardware is ASUS ROG BC-250 + Nollie1 `16d5:2a01` CDC + 24 WS2812B pixels from a 144 LEDs/m strip. NexGen3D Redux is the current reference chassis, not a requirement.
 - Steam-native Game Mode LED writes are preferred over synthetic recreation.
-- Direct Nollie1 hidraw output is preferred; OpenRGB is fallback only.
+- Direct Nollie1 output is preferred; exact `16d5:2a01` CDC serial is first on the validated hardware, known HID variants remain supported, and OpenRGB is fallback only.
 - Python runtime on SteamOS must remain standard-library-only.
 - Normal updates must remain a one-file `sledge-bridge.py` replacement plus service restart.
 - Thermal protection trips at `>= 85 C` and clears only at `<= 80 C`.
@@ -40,7 +40,7 @@
 - `src/lib/led-contract.test.ts` — behavior parity tests.
 - `src/lib/demo.ts` — deterministic demo timeline.
 - `src/stores/machine.ts` — persisted preview settings and selected state.
-- `src/components/chassis.tsx` — 24-LED Redux front-panel visualization.
+- `src/components/chassis.tsx` — generic reference-rig physical LED visualization.
 - `src/components/state-rail.tsx` — state/simulation selector.
 - `src/components/control-panel.tsx` — fallback idle, mapping, thermal, pulse controls.
 - `src/components/diagnostics-panel.tsx` — source/backend/shim/thermal/download status visualization.
@@ -467,7 +467,7 @@ git commit -m "feat: add Steam download fallback tracker"
 
 ---
 
-### Task 7: Implement Nollie HID and OpenRGB backends with watchdog behavior
+### Task 7: Implement Nollie direct and OpenRGB backends with reconnect/watchdog behavior
 
 **Files:**
 - Modify: `public/sledge/sledge-bridge.py`
@@ -476,13 +476,14 @@ git commit -m "feat: add Steam download fallback tracker"
 **Interfaces:**
 - Consumes: list of physical RGB tuples.
 - Produces:
+  - `NollieCdc.push(frame, now)`
   - `NollieHID.push(frame, now)`
   - `OpenRGBBackend.push(frame, now)`
   - `BackendManager.push(frame, now)`
 
 - [ ] **Step 1: Write packet-construction tests**
 
-For Nollie HID, assert:
+For Nollie1 `16d5:2a01` CDC, assert 64-byte indexed GRB reports, 21 LEDs/report, and a `0xFF` latch with no HID MOS/init packets. For retained Nollie HID variants, assert:
 
 - 65-byte packets,
 - GRB ordering,
@@ -491,9 +492,9 @@ For Nollie HID, assert:
 - 0xFE 0x03 LED-count init,
 - 0xFF latch.
 
-- [ ] **Step 2: Port direct hidraw discovery and transport**
+- [ ] **Step 2: Implement CDC-first discovery and retain HID variants**
 
-Prefer explicit Nollie product/manufacturer/path matches and known USB VID evidence. Log the chosen `/dev/hidrawN` once.
+Prefer `/dev/serial/by-id/` for exact Nollie1 `16d5:2a01`, fall back to ttyACM sysfs ancestry for that exact VID/PID, and explicitly exclude it from HID selection. Retain explicit product/manufacturer/VID matching for known HID variants. Log the chosen stable device path once.
 
 - [ ] **Step 3: Add watchdog tests**
 
@@ -658,9 +659,9 @@ Preserve an existing config. Install bridge into a user-owned data path. Install
 
 The default installer detects the shim. If missing and matching headers/build tools are available, it can build/install it with clear consent/output. A `--shim-only` or `--repair-shim` path rebuilds only the module.
 
-- [ ] **Step 4: Make direct HID independent of OpenRGB**
+- [ ] **Step 4: Make direct Nollie access independent of OpenRGB**
 
-If Nollie HID is usable, installation succeeds without OpenRGB. Ship `openrgb.service` as an optional template only.
+If a supported direct Nollie transport is usable (CDC first on `16d5:2a01`), installation succeeds without OpenRGB. Ship `openrgb.service` as an optional template only.
 
 - [ ] **Step 5: Write README acceptance checklist**
 
@@ -673,7 +674,7 @@ Document:
 - native Steam Personalization test,
 - fallback test,
 - 85/80 thermal behavior,
-- 120-second direct-HID stability check.
+- 120-second direct-Nollie stability check, using CDC on the validated `16d5:2a01` hardware.
 
 - [ ] **Step 6: Run syntax/compile checks and commit**
 
@@ -717,7 +718,7 @@ Selecting a manual state exits the demo until `Restart demo` is pressed.
 
 - [ ] **Step 2: Implement the chassis visual**
 
-Render a near-black Redux-style front fascia with exactly 24 physical LED emitters, small white power indicator when on, no glossy gaming-RGB treatment, and subtle light spill.
+Render a near-black generic reference-rig visualization with 24 physical LED emitters by default, small white power indicator when on, no glossy gaming-RGB treatment, and subtle light spill.
 
 - [ ] **Step 3: Implement state rail and diagnostics**
 
@@ -903,12 +904,12 @@ npm run package:sledge
 
 - [ ] **Step 4: Prepare hardware acceptance handoff**
 
-Tell the user to install/copy the package on the Redux machine and verify these journal outcomes:
+Tell the user to install/copy the package on the BC-250/Nollie1 reference rig and verify these journal outcomes:
 
 ```text
 sledge running
 control UI http://127.0.0.1:1873/
-hidraw ... leds=24
+cdc /dev/serial/by-id/usb-nollie.cn_Nollie1_...-if00 (...) 115200 8N1 leds=24
 Steam LED shim present ...
 Steam native LED control active ...
 ```

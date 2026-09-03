@@ -1,15 +1,15 @@
-# SLEDGE Design
+# SLEDGE — Steam Lighting Effects Daemon for Generic Equipment
 
 Date: 2026-09-02
-Status: Approved design, pending written-spec review
-Target hardware: NexGen3D Redux Steam Machine, BC-250 board, 24 WS2812 LEDs, Nollie1 controller
-Reference implementation: `j0shm1lls/SLEDGE` at `dad18f9`
+Status: Implemented and hardware-validated on the reference configuration
+Validated hardware: BC-250 board, Nollie1 `16d5:2a01` CDC controller, and 24 5 V WS2812B pixels from a 144 LEDs/m strip. NexGen3D Redux is the current reference chassis, not a requirement.
+Repository: `j0shm1lls/SLEDGE`
 
 ## 1. Product goal
 
-SLEDGE makes the Redux front light bar behave like a Steam Machine light bar while keeping the system maintainable on SteamOS.
+SLEDGE makes custom addressable lighting behave like a Steam Machine front light while keeping the system maintainable on SteamOS.
 
-The preferred path is no longer a synthetic recreation of Steam behavior. SLEDGE will first expose the 17-LED `valve-leds` interface Steam expects, allow Steam Game Mode to own normal light-bar behavior through its Personalization UI, capture those writes through a kernel shim, map them to the physical 24-LED strip, and send the result to Nollie1.
+The preferred path is no longer a synthetic recreation of Steam behavior. SLEDGE will first expose the 17-LED `valve-leds` interface Steam expects, allow Steam Game Mode to own normal light-bar behavior through its Personalization UI, capture those writes through a kernel shim, map them to the configured physical LED output (24 pixels on the validated rig), and send the result to Nollie1.
 
 When Steam-native LED writes are unavailable or stop working, the daemon falls back to its own state engine and existing Steam download observation logic. The fallback must be automatic and visible in diagnostics.
 
@@ -20,8 +20,8 @@ The daemon remains a single stdlib-only Python file for normal field updates. Up
 ### Included
 
 - Steam-native Game Mode color, brightness, effect, and manual-pixel control when the shim is active.
-- 17 logical Valve LEDs mapped to the 24 physical Redux LEDs.
-- Direct Nollie1 HID output as the preferred sink.
+- 17 logical Valve LEDs mapped to a configurable physical LED count; the validated rig uses 24 pixels.
+- Nollie1 `16d5:2a01` CDC serial output as the preferred validated sink; other known Nollie HID variants remain supported.
 - OpenRGB SDK output as fallback.
 - Steam download progress tracking when native Steam pixel writes are not available.
 - Overheat override at 85 C with hysteresis recovery at 80 C.
@@ -35,7 +35,7 @@ The daemon remains a single stdlib-only Python file for normal field updates. Up
 - Fake RAM-missing, GPU-failure, SSD-missing, or memory-training POST patterns. Those states originate in Fremont firmware/EC hardware and are not truthfully observable on the BC-250 configuration.
 - Claims that SLEDGE provides pre-userspace BIOS diagnostics.
 - Database, accounts, cloud services, or network dependencies.
-- Requiring OpenRGB when direct HID is available.
+- Requiring OpenRGB when a supported direct Nollie transport is available.
 
 If a real BC-250 source for a specific hardware fault is discovered later, that fault can be added as a separate feature with a real detector.
 
@@ -106,7 +106,7 @@ A Python daemon update never requires a module rebuild.
 
 All render paths converge on one pipeline:
 
-`source state -> 17 logical RGB LEDs -> mapping -> 24 physical RGB LEDs -> optional physical-only activity pulse -> backend`
+`source state -> 17 logical RGB LEDs -> mapping -> N physical RGB LEDs -> physical orientation -> optional fallback activity pulse -> backend`
 
 ### Mapping modes
 
@@ -169,7 +169,7 @@ Internally it is organized into focused sections/classes so a field update still
 7. state arbitration,
 8. logical rendering,
 9. 17-to-N physical mapping and download activity pulse,
-10. Nollie HID backend,
+10. Nollie direct backends (CDC primary on the validated hardware; known HID variants retained),
 11. OpenRGB fallback backend,
 12. control/diagnostic HTTP server,
 13. main loop and structured transition logging.
@@ -178,20 +178,23 @@ The daemon must use only Python standard library modules on the target machine.
 
 ## 8. Hardware backends
 
-### Nollie1 direct HID
+### Nollie1 direct output
 
-Preferred backend.
+The preferred validated backend is CDC serial for the exact Nollie1 `16d5:2a01`. Known Nollie HID variants remain supported for other controller revisions.
 
-Preserve the working hardware behavior from `dad18f9`:
+For `16d5:2a01` CDC, use the stable `/dev/serial/by-id/` path when present and speak the controller protocol directly:
 
-- hidraw device discovery,
-- 65-byte full-speed packets,
-- GRB byte order,
-- 0xFF latch packet,
-- MOS keepalive approximately every 1.5 seconds,
-- automatic recovery/reopen when practical.
+- 115200 baud, 8N1,
+- fixed 64-byte reports,
+- byte 0 packet index, up to 21 LEDs per data report,
+- GRB payload beginning at byte 1,
+- 64-byte show/latch report with byte 0 `0xFF`,
+- no HID MOS/init packets on the CDC transport,
+- reconnect/re-detect after serial write failures.
 
-Backend selection should not rely only on a loose manufacturer substring if stronger VID/PID/path evidence is available. Diagnostics show exactly which hidraw node was selected.
+The exact CDC identity must be excluded from HID selection so composite HID side interfaces are never mistaken for the lighting transport. Diagnostics show the selected stable device path.
+
+Other known Nollie HID variants retain their established 65-byte HID protocol and watchdog behavior, but HID is not the primary path for the validated `16d5:2a01` hardware.
 
 ### OpenRGB SDK
 
@@ -301,12 +304,12 @@ It installs:
 - `sledge-bridge.py` under the user's local data directory,
 - config under the user's XDG config directory,
 - a user `sledge.service`,
-- udev permissions needed for the selected Nollie HID device,
+- udev permissions needed for the selected Nollie direct device (CDC tty on the validated hardware),
 - the optional/strongly-recommended Valve LED kernel shim when headers/build tools are available.
 
 The daemon service uses user systemd with linger so it remains alive in Game Mode.
 
-The installer should prefer direct Nollie HID and not install/start OpenRGB unless the user actually needs that fallback.
+The installer should prefer direct Nollie access, with exact `16d5:2a01` CDC first on the validated hardware, and should not install/start OpenRGB unless the user actually needs that fallback.
 
 Kernel-shim installation is explicitly separated from normal daemon deployment so a user can update the bridge by copying one Python file and restarting the service.
 
@@ -319,7 +322,7 @@ Required behavior:
 - Missing shim -> log once, use fallback engine.
 - Shim present but never written by Steam -> report native path inactive and use fallback.
 - Shim read failure -> reopen with backoff, preserve last safe output, then fall back if stale.
-- Nollie HID failure -> reopen/re-detect; fall back to OpenRGB when configured/available.
+- Nollie direct-backend failure -> reopen/re-detect; fall back to another supported Nollie transport or OpenRGB when configured/available.
 - OpenRGB failure -> reconnect with bounded retry/backoff; do not spin/log-flood.
 - Steam CEF unavailable -> ACF fallback; create the known CEF debugging marker only when needed and report that Steam restart is required.
 - Sensor read errors -> ignore invalid sensor samples rather than triggering false overheat.
@@ -357,16 +360,16 @@ The preview is verified at both 1440x900 and 390x844. Required interactions incl
 
 ### Target-machine acceptance checks
 
-Some acceptance criteria require the Redux machine and cannot be proven in the development container. The release checklist will make these explicit instead of pretending they are locally verified:
+Some acceptance criteria require the BC-250/Nollie1 reference rig and cannot be proven in the development container. The release checklist will make these explicit instead of pretending they are locally verified:
 
 1. module loads on the running SteamOS kernel,
 2. `valve-leds[0..16]` appear,
 3. Game Mode Personalization appears/changes the shim state,
-4. color/brightness/effects reach the Nollie strip,
+4. color/brightness/effects reach the configured physical LEDs through Nollie1,
 5. native Steam download progress is captured if Steam emits it,
 6. fallback download tracking works if native progress is absent,
 7. 85 C trip / 80 C clear works against real sensors,
-8. direct HID remains stable beyond 120 seconds without fading.
+8. Nollie1 CDC remains stable beyond 120 seconds without falling back to controller firmware behavior.
 
 ## 15. Definition of done
 
@@ -381,13 +384,13 @@ SLEDGE v1 is done when:
 - download activity uses the brief 0%-to-current-edge pulse rather than the old continuous sweep,
 - thermal behavior is 85 C trip / 80 C clear,
 - unsupported Fremont POST fault animations are removed,
-- hardware-only claims are clearly separated from checks that still require the Redux machine.
+- hardware-only claims are clearly separated from checks that still require the BC-250/Nollie1 reference rig.
 
 ## 16. External references used for the design
 
-- `j0shm1lls/SLEDGE` (`dad18f9`) for the proven Nollie HID, OpenRGB, Steam CEF, ACF, and existing shim integration work.
+- the prior SLEDGE/NexBar history for OpenRGB, Steam CEF/ACF, shim integration, and support for legacy Nollie HID variants; the validated `16d5:2a01` controller uses CDC serial.
 - `rpf16rj/steamos-led-bar-release` for a current public implementation showing Steam Game Mode Personalization driving a 17-LED Valve-compatible shim on non-native LED hardware.
 - `rpf16rj/steamos-led-wled` for a current shim-to-external-strip architecture.
 - `caed1994/SteamOS-Utility-Center` for a tested Valve-compatible shim, snapshot UAPI, Game Mode ownership model, and test coverage around Steam manual download pixels.
 
-These projects are references, not a reason to copy unrelated features. SLEDGE stays focused on the Redux + Nollie1 use case.
+These projects are references, not a reason to copy unrelated features. SLEDGE stays focused on SteamOS lighting for generic equipment, with BC-250 + Nollie1 as the validated reference configuration.
