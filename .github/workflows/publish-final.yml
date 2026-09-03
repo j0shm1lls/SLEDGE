@@ -1,26 +1,15 @@
-name: sledge-browser-audit
+name: sledge-docs-red
 on:
   push:
     branches: [upload/nexbar2-final]
 permissions:
   contents: read
 jobs:
-  audit:
+  red:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: wip/sledge-v1
-      - name: Audit legacy naming and run browser smoke
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo '=== WIP HEAD ==='
-          git rev-parse HEAD
-          echo '=== LEGACY PATHS ==='
-          git ls-files | grep -i 'nexbar' || true
-          echo '=== LEGACY TEXT (intentional regression excluded) ==='
-          git grep -niE 'nexbar2|nexbar' -- . ':(exclude)src/lib/led-contract.test.ts' || true
-          npm ci
-          npx playwright install --with-deps chromium
-          npx playwright test
+      - name: Confirm stale project docs fail SLEDGE contract
+        run: python3 -m unittest public.sledge.tests.test_rebrand_docs -v
