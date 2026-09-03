@@ -19,16 +19,16 @@ jobs:
           npx playwright install --with-deps chromium
           npm run dev > /tmp/nexbar-dev.log 2>&1 &
           DEV_PID=$!
-          trap 'kill "$DEV_PID" 2>/dev/null || true' EXIT
+          trap 'kill "$DEV_PID" 2>/dev/null || true; rm -f .diag.mjs' EXIT
           for i in $(seq 1 60); do
             if curl -fsS http://127.0.0.1:8080/ >/tmp/nexbar.html; then break; fi
             sleep 1
           done
           echo '=== DEV LOG ==='
           cat /tmp/nexbar-dev.log
-          echo '=== HTML SCRIPTS ==='
-          grep -o '<script[^>]*>[^<]*</script>\|<script[^>]*>' /tmp/nexbar.html || true
-          cat > /tmp/diag.mjs <<'JS'
+          echo '=== HTML SCRIPT SRCS ==='
+          strings /tmp/nexbar.html | grep -o 'src="[^"]*"' | head -20 || true
+          cat > .diag.mjs <<'JS'
           import { chromium } from 'playwright'
           const browser = await chromium.launch({ headless: true })
           const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
@@ -47,8 +47,7 @@ jobs:
             demo: [...document.querySelectorAll('button')].find(b => b.textContent?.startsWith('Restart demo'))?.className,
           }))
           console.log('BEFORE', JSON.stringify(before, null, 2))
-          const button = page.getByRole('button', { name: /^Downloading/ })
-          await button.click()
+          await page.getByRole('button', { name: /^Downloading/ }).click()
           await page.waitForTimeout(500)
           const after = await page.evaluate(() => ({
             storage: localStorage.getItem('nexbar2-preview'),
@@ -60,4 +59,4 @@ jobs:
           console.log('ERRORS', JSON.stringify(errors, null, 2))
           await browser.close()
           JS
-          node /tmp/diag.mjs
+          node .diag.mjs
