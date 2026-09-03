@@ -1,101 +1,15 @@
-name: sledge-docs-browser-green
+name: sledge-legacy-name-red
 on:
   push:
     branches: [upload/nexbar2-final]
 permissions:
-  contents: write
+  contents: read
 jobs:
-  fix-and-verify:
+  red:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: wip/sledge-v1
-      - name: Align final SLEDGE documentation and browser smoke
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "sledge-build"
-          git config user.email "actions@users.noreply.github.com"
-
-          git mv tests/browser/nexbar.spec.ts tests/browser/sledge.spec.ts
-
-          python3 - <<'PY'
-          from pathlib import Path
-
-          browser = Path('tests/browser/sledge.spec.ts')
-          text = browser.read_text()
-          text = text.replace('/Make the front bar feel native/i', '/Make custom lighting feel native/i')
-          needle = "  await expect(page.locator('.led')).toHaveCount(24)\n"
-          replacement = needle + "  await expect(page.locator('.hero-hammer')).toBeVisible()\n  await expect(page.locator('.hammer-led')).toHaveCount(24)\n  await expect(page.getByRole('link', { name: 'SLEDGE', exact: true })).toBeVisible()\n"
-          text = text.replace(needle, replacement)
-          browser.write_text(text)
-
-          spec = Path('docs/superpowers/specs/2026-09-02-sledge-design.md')
-          s = spec.read_text()
-          replacements = {
-              '# SLEDGE Design': '# SLEDGE — Steam Lighting Effects Daemon for Generic Equipment',
-              'Status: Approved design, pending written-spec review': 'Status: Implemented and hardware-validated on the reference configuration',
-              'Target hardware: NexGen3D Redux Steam Machine, BC-250 board, 24 WS2812 LEDs, Nollie1 controller': 'Validated hardware: BC-250 board, Nollie1 `16d5:2a01` CDC controller, and 24 5 V WS2812B pixels from a 144 LEDs/m strip. NexGen3D Redux is the current reference chassis, not a requirement.',
-              'Reference implementation: `j0shm1lls/SLEDGE` at `dad18f9`': 'Repository: `j0shm1lls/SLEDGE`',
-              'SLEDGE makes the Redux front light bar behave like a Steam Machine light bar while keeping the system maintainable on SteamOS.': 'SLEDGE makes custom addressable lighting behave like a Steam Machine front light while keeping the system maintainable on SteamOS.',
-              'map them to the physical 24-LED strip': 'map them to the configured physical LED output (24 pixels on the validated rig)',
-              '- 17 logical Valve LEDs mapped to the 24 physical Redux LEDs.': '- 17 logical Valve LEDs mapped to a configurable physical LED count; the validated rig uses 24 pixels.',
-              '- Direct Nollie1 HID output as the preferred sink.': '- Nollie1 `16d5:2a01` CDC serial output as the preferred validated sink; other known Nollie HID variants remain supported.',
-              '- Requiring OpenRGB when direct HID is available.': '- Requiring OpenRGB when a supported direct Nollie transport is available.',
-              '`source state -> 17 logical RGB LEDs -> mapping -> 24 physical RGB LEDs -> optional physical-only activity pulse -> backend`': '`source state -> 17 logical RGB LEDs -> mapping -> N physical RGB LEDs -> physical orientation -> optional fallback activity pulse -> backend`',
-              '10. Nollie HID backend,': '10. Nollie direct backends (CDC primary on the validated hardware; known HID variants retained),',
-              '- udev permissions needed for the selected Nollie HID device,': '- udev permissions needed for the selected Nollie direct device (CDC tty on the validated hardware),',
-              'The installer should prefer direct Nollie HID and not install/start OpenRGB unless the user actually needs that fallback.': 'The installer should prefer direct Nollie access, with exact `16d5:2a01` CDC first on the validated hardware, and should not install/start OpenRGB unless the user actually needs that fallback.',
-              '- Nollie HID failure -> reopen/re-detect; fall back to OpenRGB when configured/available.': '- Nollie direct-backend failure -> reopen/re-detect; fall back to another supported Nollie transport or OpenRGB when configured/available.',
-              'Some acceptance criteria require the Redux machine and cannot be proven in the development container.': 'Some acceptance criteria require the BC-250/Nollie1 reference rig and cannot be proven in the development container.',
-              '4. color/brightness/effects reach the Nollie strip,': '4. color/brightness/effects reach the configured physical LEDs through Nollie1,',
-              '8. direct HID remains stable beyond 120 seconds without fading.': '8. Nollie1 CDC remains stable beyond 120 seconds without falling back to controller firmware behavior.',
-              '- hardware-only claims are clearly separated from checks that still require the Redux machine.': '- hardware-only claims are clearly separated from checks that still require the BC-250/Nollie1 reference rig.',
-              '- `j0shm1lls/SLEDGE` (`dad18f9`) for the proven Nollie HID, OpenRGB, Steam CEF, ACF, and existing shim integration work.': '- the prior SLEDGE/NexBar history for OpenRGB, Steam CEF/ACF, shim integration, and support for legacy Nollie HID variants; the validated `16d5:2a01` controller uses CDC serial.',
-              'These projects are references, not a reason to copy unrelated features. SLEDGE stays focused on the Redux + Nollie1 use case.': 'These projects are references, not a reason to copy unrelated features. SLEDGE stays focused on SteamOS lighting for generic equipment, with BC-250 + Nollie1 as the validated reference configuration.',
-          }
-          for old, new in replacements.items():
-              s = s.replace(old, new)
-
-          start = s.index('### Nollie1 direct HID')
-          end = s.index('### OpenRGB SDK', start)
-          cdc_section = '''### Nollie1 direct output\n\nThe preferred validated backend is CDC serial for the exact Nollie1 `16d5:2a01`. Known Nollie HID variants remain supported for other controller revisions.\n\nFor `16d5:2a01` CDC, use the stable `/dev/serial/by-id/` path when present and speak the controller protocol directly:\n\n- 115200 baud, 8N1,\n- fixed 64-byte reports,\n- byte 0 packet index, up to 21 LEDs per data report,\n- GRB payload beginning at byte 1,\n- 64-byte show/latch report with byte 0 `0xFF`,\n- no HID MOS/init packets on the CDC transport,\n- reconnect/re-detect after serial write failures.\n\nThe exact CDC identity must be excluded from HID selection so composite HID side interfaces are never mistaken for the lighting transport. Diagnostics show the selected stable device path.\n\nOther known Nollie HID variants retain their established 65-byte HID protocol and watchdog behavior, but HID is not the primary path for the validated `16d5:2a01` hardware.\n\n'''
-          s = s[:start] + cdc_section + s[end:]
-          spec.write_text(s)
-
-          plan = Path('docs/superpowers/plans/2026-09-02-sledge-implementation.md')
-          p = plan.read_text()
-          replacements = {
-              '# SLEDGE Implementation Plan': '# SLEDGE — Steam Lighting Effects Daemon for Generic Equipment — Implementation Plan',
-              '**Goal:** Build SLEDGE as a Steam-native-first 17-to-24 LED bridge for the Redux + Nollie1,': '**Goal:** Build SLEDGE (Steam Lighting Effects Daemon for Generic Equipment) as a Steam-native-first 17-logical-to-N-physical LED bridge, validated on BC-250 + Nollie1 + 24 WS2812B pixels,',
-              'A GPL Valve-compatible kernel shim exposes the 17 LED interface Steam Game Mode expects; direct Nollie HID is primary and OpenRGB is fallback.': 'A GPL Valve-compatible kernel shim exposes the 17 LED interface Steam Game Mode expects; exact Nollie1 `16d5:2a01` CDC serial is primary on the validated hardware, known Nollie HID variants are retained, and OpenRGB is fallback.',
-              '- Target hardware is the NexGen3D Redux with ASUS ROG BC-250, Nollie1, and 24 WS2812B LEDs.': '- Validated hardware is ASUS ROG BC-250 + Nollie1 `16d5:2a01` CDC + 24 WS2812B pixels from a 144 LEDs/m strip. NexGen3D Redux is the current reference chassis, not a requirement.',
-              '- Direct Nollie1 hidraw output is preferred; OpenRGB is fallback only.': '- Direct Nollie1 output is preferred; exact `16d5:2a01` CDC serial is first on the validated hardware, known HID variants remain supported, and OpenRGB is fallback only.',
-              '- `src/components/chassis.tsx` — 24-LED Redux front-panel visualization.': '- `src/components/chassis.tsx` — generic reference-rig physical LED visualization.',
-              '### Task 7: Implement Nollie HID and OpenRGB backends with watchdog behavior': '### Task 7: Implement Nollie direct and OpenRGB backends with reconnect/watchdog behavior',
-              '- Produces:\n  - `NollieHID.push(frame, now)`': '- Produces:\n  - `NollieCdc.push(frame, now)`\n  - `NollieHID.push(frame, now)`',
-              '**Step 1: Write packet-construction tests**\n\nFor Nollie HID, assert:': '**Step 1: Write packet-construction tests**\n\nFor Nollie1 `16d5:2a01` CDC, assert 64-byte indexed GRB reports, 21 LEDs/report, and a `0xFF` latch with no HID MOS/init packets. For retained Nollie HID variants, assert:',
-              '- [ ] **Step 2: Port direct hidraw discovery and transport**': '- [ ] **Step 2: Implement CDC-first discovery and retain HID variants**',
-              'Prefer explicit Nollie product/manufacturer/path matches and known USB VID evidence. Log the chosen `/dev/hidrawN` once.': 'Prefer `/dev/serial/by-id/` for exact Nollie1 `16d5:2a01`, fall back to ttyACM sysfs ancestry for that exact VID/PID, and explicitly exclude it from HID selection. Retain explicit product/manufacturer/VID matching for known HID variants. Log the chosen stable device path once.',
-              '- [ ] **Step 4: Make direct HID independent of OpenRGB**': '- [ ] **Step 4: Make direct Nollie access independent of OpenRGB**',
-              'If Nollie HID is usable, installation succeeds without OpenRGB.': 'If a supported direct Nollie transport is usable (CDC first on `16d5:2a01`), installation succeeds without OpenRGB.',
-              '- 120-second direct-HID stability check.': '- 120-second direct-Nollie stability check, using CDC on the validated `16d5:2a01` hardware.',
-              'Render a near-black Redux-style front fascia with exactly 24 physical LED emitters,': 'Render a near-black generic reference-rig visualization with 24 physical LED emitters by default,',
-              'Tell the user to install/copy the package on the Redux machine': 'Tell the user to install/copy the package on the BC-250/Nollie1 reference rig',
-              'hidraw ... leds=24': 'cdc /dev/serial/by-id/usb-nollie.cn_Nollie1_...-if00 (...) 115200 8N1 leds=24',
-          }
-          for old, new in replacements.items():
-              p = p.replace(old, new)
-          plan.write_text(p)
-          PY
-
-          python3 -m unittest public.sledge.tests.test_rebrand_docs -v
-          npm ci
-          npx playwright install --with-deps chromium
-          npx playwright test
-          git diff --check
-
-          git add -A
-          git commit -m "docs: align SLEDGE hardware-neutral architecture"
-          git push origin HEAD:wip/sledge-v1
+      - name: Confirm docs reject legacy branding
+        run: python3 -m unittest public.sledge.tests.test_rebrand_docs -v
