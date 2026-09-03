@@ -96,7 +96,7 @@ test('install preview documents persistent Nollie1 CDC setup', async () => {
   assert.ok(panel.includes('./install.sh --with-shim'))
   assert.ok(panel.includes('16d5:2a01'))
   assert.ok(panel.includes('/dev/serial/by-id/'))
-  assert.ok(panel.includes('/etc/modules-load.d/nexbar.conf'))
+  assert.ok(panel.includes('/etc/modules-load.d/sledge.conf'))
   assert.ok(panel.includes('./install.sh --repair-shim'))
   assert.ok(!panel.includes('hidraw /dev/hidraw'))
 })
@@ -113,6 +113,51 @@ test('preview preferred path matches the hardware-proven CDC transport', async (
   assert.ok(!route.includes('NOLLIE1 / HID PRIMARY'))
   assert.ok(diagnostics.includes('cdc · Nollie1'))
   assert.ok(!diagnostics.includes('hidraw · Nollie1'))
+})
+
+test('SLEDGE branding is clean, hardware-neutral, and uses fresh runtime names', async () => {
+  const { existsSync } = await import('node:fs')
+  const { readFile } = await import('node:fs/promises')
+  const { fileURLToPath } = await import('node:url')
+  const repo = new URL('../../', import.meta.url)
+  const runtime = new URL('public/sledge/', repo)
+
+  assert.ok(existsSync(fileURLToPath(runtime)), 'public/sledge runtime package must exist')
+  for (const name of ['sledge-bridge.py', 'sledge.conf.json', 'sledge.service', 'sledge.zip']) {
+    assert.ok(existsSync(fileURLToPath(new URL(name, runtime))), `missing renamed runtime artifact ${name}`)
+  }
+  assert.ok(!existsSync(fileURLToPath(new URL('public/nexbar/nexbar.service', repo))), 'legacy nexbar.service must be removed')
+
+  const readme = await readFile(new URL('README.md', runtime), 'utf8')
+  const install = await readFile(new URL('install.sh', runtime), 'utf8')
+  const route = await readFile(new URL('src/routes/index.tsx', repo), 'utf8')
+  const head = await readFile(new URL('src/routes/__root.tsx', repo), 'utf8')
+  const hero = await readFile(new URL('src/components/hero-hammer.tsx', repo), 'utf8')
+
+  assert.ok(readme.includes('SLEDGE — Steam Lighting Effects Daemon for Generic Equipment'))
+  assert.ok(readme.includes('BC-250'))
+  assert.ok(readme.includes('Nollie1'))
+  assert.ok(readme.includes('WS2812B'))
+  assert.ok(readme.includes('144 LEDs/m'))
+  assert.ok(readme.includes('NexGen3D Redux'))
+  assert.match(readme, /not specific to that enclosure|reference chassis/i)
+
+  for (const token of ['sledge.service', '.config/sledge', '.local/lib/sledge', '/etc/modules-load.d/sledge.conf']) {
+    assert.ok(install.includes(token), `installer missing ${token}`)
+  }
+  assert.ok(!install.includes('nexbar.service'))
+  assert.ok(!install.includes('.config/nexbar'))
+  assert.ok(!install.includes('.local/lib/nexbar'))
+
+  assert.ok(route.includes('SLEDGE'))
+  assert.ok(route.includes('<HeroHammer'))
+  assert.ok(route.includes('BC-250'))
+  assert.ok(route.includes('NOLLIE1 / CDC PRIMARY'))
+  assert.ok(!route.includes('Redux × SteamOS'))
+  assert.ok(!route.includes('Built for the BC-250 Redux configuration.'))
+  assert.ok(head.includes('SLEDGE'))
+  assert.ok(head.includes('Steam Lighting Effects Daemon for Generic Equipment'))
+  assert.ok(hero.includes('24'))
 })
 
 test('fallback idle renderer supports solid, breath, rainbow, and patrol', async () => {
