@@ -1,10 +1,17 @@
-name: nexbar2-staging-manual
+name: sledge-rebrand-red
 on:
-  workflow_dispatch:
+  push:
+    branches: [upload/nexbar2-final]
 permissions:
   contents: read
 jobs:
-  staging-note:
+  red:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Automated staging is disabled; active development is on wip/nexbar2-v1."
+      - uses: actions/checkout@v4
+        with:
+          ref: wip/sledge-v1
+      - name: Confirm SLEDGE rebrand contract is red
+        run: |
+          npm ci
+          npm test
