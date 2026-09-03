@@ -101,6 +101,17 @@ test('install preview documents persistent Nollie1 CDC setup', async () => {
   assert.ok(!panel.includes('hidraw /dev/hidraw'))
 })
 
+test('preview preferred path matches the hardware-proven CDC transport', async () => {
+  const { readFile } = await import('node:fs/promises')
+  const native = await readFile(new URL('../components/native-path-panel.tsx', import.meta.url), 'utf8')
+  const route = await readFile(new URL('../routes/index.tsx', import.meta.url), 'utf8')
+  assert.ok(native.includes('Nollie1 CDC'))
+  assert.ok(native.includes('64-byte GRB'))
+  assert.ok(!native.includes('Nollie1 hidraw'))
+  assert.ok(route.includes('NOLLIE1 / CDC PRIMARY'))
+  assert.ok(!route.includes('NOLLIE1 / HID PRIMARY'))
+})
+
 test('fallback idle renderer supports solid, breath, rainbow, and patrol', async () => {
   const contract = await import('./led-contract.ts') as typeof import('./led-contract.ts') & { renderIdleEffect?: Function }
   assert.equal(typeof contract.renderIdleEffect, 'function')
