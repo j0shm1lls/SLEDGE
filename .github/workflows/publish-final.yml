@@ -1,52 +1,10 @@
-name: sledge-final-release-verify
+name: sledge-staging-manual
 on:
-  push:
-    branches: [upload/nexbar2-final]
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  verify:
+  staging-note:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: wip/sledge-v1
-      - name: Verify exact SLEDGE release state
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "SLEDGE_HEAD=$(git rev-parse HEAD)"
-          npm ci
-          npx playwright install --with-deps chromium
-          python3 -m unittest discover -s public/sledge/tests -p 'test_*.py' -v
-          python3 -m py_compile public/sledge/sledge-bridge.py
-          bash -n public/sledge/install.sh
-          sh -n public/sledge/install.sh
-          npm test
-          npm run typecheck
-          npm run build
-          npm run package:sledge
-          unzip -t public/sledge/sledge.zip
-          npx playwright test
-
-          if git ls-files | grep -iE 'nexbar2|nexbar'; then
-            echo 'ERROR: legacy project name remains in tracked path' >&2
-            exit 1
-          fi
-
-          if git grep -niE 'nexbar2|nexbar' -- . \
-              ':(exclude)src/lib/led-contract.test.ts' \
-              ':(exclude)public/sledge/tests/test_rebrand_docs.py'; then
-            echo 'ERROR: legacy project name remains outside intentional regression tests' >&2
-            exit 1
-          fi
-
-          if git ls-files .output test-results playwright-report | grep -q .; then
-            echo 'ERROR: generated preview/test output is tracked' >&2
-            git ls-files .output test-results playwright-report >&2
-            exit 1
-          fi
-
-          git diff --check
-          git diff --exit-code -- public/sledge/sledge.zip
-          test -z "$(git status --porcelain)"
+      - run: echo "Automated staging is disabled; active development is on wip/sledge-v1."
