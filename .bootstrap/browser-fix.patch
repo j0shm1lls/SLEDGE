@@ -1,0 +1,37 @@
+diff --git a/src/stores/machine.ts b/src/stores/machine.ts
+index f0bfb98..d30788d 100644
+--- a/src/stores/machine.ts
++++ b/src/stores/machine.ts
+@@ -35,6 +35,6 @@ export const useMachine = create<MachineStore>()(persist((set) => ({
+   tripC: 85, clearC: 80, demoRunning: true, demoEpoch: 0,
+   setState: (state) => set({ state, demoRunning: false }),
+   patch: (next) => set({ ...next, demoRunning: false }),
+-  applyDemoFrame: (state, progress) => set({ state, progress }),
++  applyDemoFrame: (state, progress) => set((current) => current.demoRunning ? { state, progress } : current),
+   restartDemo: () => set((current) => ({ state: 'boot', progress: 0.04, demoRunning: true, demoEpoch: current.demoEpoch + 1 })),
+ }), { name: 'nexbar2-preview' }))
+diff --git a/tests/browser/nexbar.spec.ts b/tests/browser/nexbar.spec.ts
+index 4f39b67..20ca85f 100644
+--- a/tests/browser/nexbar.spec.ts
++++ b/tests/browser/nexbar.spec.ts
+@@ -26,16 +26,16 @@ test('starts with 24 physical LEDs and demo can be restarted', async ({ page })
+ test('download, mapping, pause, effect, and thermal controls are interactive', async ({ page }) => {
+   await page.goto('/')
+   await page.getByRole('button', { name: /^Downloading/ }).click()
+-  await page.getByRole('button', { name: 'nearest' }).click()
+-  await expect(page.getByRole('button', { name: 'nearest' })).toHaveAttribute('data-state', 'on')
++  await page.getByRole('radio', { name: 'nearest' }).click()
++  await expect(page.getByRole('radio', { name: 'nearest' })).toHaveAttribute('data-state', 'on')
+   await expect(page.getByText(/17 → 24 mapping/)).toBeVisible()
+ 
+   await page.getByRole('checkbox', { name: 'Pause download' }).check()
+   await expect(page.getByRole('button', { name: /^Paused/ })).toHaveClass(/active/)
+ 
+-  await page.getByRole('button', { name: 'rainbow' }).click()
++  await page.getByRole('radio', { name: 'rainbow' }).click()
+   await page.getByRole('button', { name: /^Fallback/ }).click()
+-  await expect(page.getByRole('button', { name: 'rainbow' })).toHaveAttribute('data-state', 'on')
++  await expect(page.getByRole('radio', { name: 'rainbow' })).toHaveAttribute('data-state', 'on')
+   await expect(page.getByLabel('Trip temperature')).toHaveValue('85')
+   await expect(page.getByLabel('Clear temperature')).toHaveValue('80')
+ })
