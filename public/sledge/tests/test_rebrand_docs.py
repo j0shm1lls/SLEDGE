@@ -18,6 +18,8 @@ class SledgeProjectDocsTests(unittest.TestCase):
         self.assertIn("reference chassis", text.lower())
         self.assertNotIn("Direct Nollie1 HID output as the preferred sink", text)
         self.assertNotIn("24 physical Redux LEDs", text)
+        self.assertNotIn("NexBar", text)
+        self.assertNotIn("NexBar2", text)
 
     def test_implementation_plan_tracks_generic_hardware_and_cdc_first(self):
         text = PLAN.read_text(encoding="utf-8")
@@ -28,6 +30,8 @@ class SledgeProjectDocsTests(unittest.TestCase):
         self.assertNotIn("Target hardware is the NexGen3D Redux", text)
         self.assertNotIn("Direct Nollie1 hidraw output is preferred", text)
         self.assertNotIn("direct Nollie HID is primary", text)
+        self.assertNotIn("NexBar", text)
+        self.assertNotIn("NexBar2", text)
 
     def test_browser_smoke_file_uses_sledge_name(self):
         self.assertTrue((REPO / "tests" / "browser" / "sledge.spec.ts").is_file())
