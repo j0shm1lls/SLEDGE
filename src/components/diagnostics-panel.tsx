@@ -11,7 +11,7 @@ export function DiagnosticsPanel() {
   const rows = [
     ['OUTPUT OWNER', owner],
     ['SHIM', native ? 'active · seq 284' : 'available · awaiting Steam ownership'],
-    ['BACKEND', `hidraw · Nollie1 · ${m.physical} LEDs`],
+    ['BACKEND', `cdc · Nollie1 · ${m.physical} LEDs`],
     ['MAPPING', `17 → ${m.physical} · ${m.mapping}${m.reverse ? ' · reversed' : ''}`],
     ['THERMAL', m.state === 'thermal' ? `${(m.tripC + 0.4).toFixed(1)} °C · latched` : `67.2 °C · clear (${m.tripC}/${m.clearC})`],
     ['DOWNLOAD', fallbackDownload ? `${Math.round(m.progress * 100)}% · ${m.state === 'paused' ? 'paused' : 'active'} · CEF` : 'idle'],
