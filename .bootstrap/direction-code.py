@@ -25,8 +25,18 @@ replacements = [
 for old, new in replacements:
     count = text.count(old)
     if count != 1:
-        raise SystemExit(f'expected exactly one match for {old!r}, found {count}')
+        raise SystemExit(f'expected exactly one bridge match for {old!r}, found {count}')
     text = text.replace(old, new, 1)
 
 bridge.write_text(text)
-print('Applied asserted LED Direction transform.')
+
+test_bridge = Path('public/nexbar/tests/test_bridge.py')
+test_text = test_bridge.read_text()
+old = "for control_id in ('effect', 'physical', 'reverse', 'backend', 'trip', 'clear', 'pause', 'pulse'):"
+new = "for control_id in ('effect', 'physical', 'direction', 'backend', 'trip', 'clear', 'pause', 'pulse'):"
+count = test_text.count(old)
+if count != 1:
+    raise SystemExit(f'expected exactly one stale control-id contract, found {count}')
+test_bridge.write_text(test_text.replace(old, new, 1))
+
+print('Applied asserted LED Direction transform and updated the superseded control-id contract.')
