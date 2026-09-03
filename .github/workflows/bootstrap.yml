@@ -1,4 +1,5 @@
 name: bootstrap-nexbar2
+# one-shot verifier; deletes itself after a successful publish
 on:
   push:
     branches: [feat/nexbar2-v1]
