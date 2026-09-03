@@ -1,70 +1,50 @@
-name: materialize-nexbar2-wip
+name: integrate-nollie-cdc
 on:
   push:
     branches: [upload/nexbar2-final]
 permissions:
   contents: write
 jobs:
-  materialize:
+  cdc-red-green:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Reassemble exact tested source
+      - name: Integrate CDC patch with an explicit red-green gate
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p /tmp/nexbar-preserve
-          if [ -d docs ]; then cp -a docs /tmp/nexbar-preserve/docs; fi
-          cp .bootstrap/final.patch /tmp/final.patch
-          cp .bootstrap/browser-fix.patch /tmp/browser-fix.patch
-          echo "cf515dbb4e64a0a499b00906a1494935203c4099ce74ea62b16dbbbc36ec020e  /tmp/final.patch" | sha256sum -c -
-          echo "eec73d0136c046e01b7f7453f45a9b46511b5054909519d0bd637a4e48f40836  /tmp/browser-fix.patch" | sha256sum -c -
-          cat \
-            .bootstrap/final.part00 \
-            .bootstrap/final.part01 \
-            .bootstrap/final.part02 \
-            .bootstrap/final.part03 \
-            .bootstrap/final.part04 \
-            .bootstrap/final.part05 \
-            .bootstrap/final.part06 \
-            .bootstrap/final.part07 \
-            .bootstrap/final.part08a \
-            .bootstrap/final.part08b \
-            | base64 -d > /tmp/nexbar2-final.tar.gz
-          echo "9cd5708d87151dddd6ff0a611a85ed8f4e9ad080d2938b93ddaa19cda5e013c6  /tmp/nexbar2-final.tar.gz" | sha256sum -c -
-          tar -tzf /tmp/nexbar2-final.tar.gz >/dev/null
-          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
-          tar -xzf /tmp/nexbar2-final.tar.gz
-          git apply /tmp/final.patch
-          git apply /tmp/browser-fix.patch
-          if [ -d /tmp/nexbar-preserve/docs ]; then cp -a /tmp/nexbar-preserve/docs ./docs; fi
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-      - name: Verify core source before WIP publication
-        shell: bash
-        run: |
-          set -euo pipefail
-          npm install
-          npm test
-          npm run typecheck
-          npm run build
-          npm run package:nexbar
-          npm run test:python
+          if [ ! -f .bootstrap/cdc-test.patch ] || [ ! -f .bootstrap/cdc-code.patch ]; then
+            echo 'CDC patches not both staged yet; nothing to integrate.'
+            exit 0
+          fi
+          cp .bootstrap/cdc-test.patch /tmp/cdc-test.patch
+          cp .bootstrap/cdc-code.patch /tmp/cdc-code.patch
+          git fetch origin wip/nexbar2-v1
+          git checkout -B cdc-work origin/wip/nexbar2-v1
+          git apply /tmp/cdc-test.patch
+
+          set +e
+          python3 -m unittest public/nexbar/tests/test_nollie_cdc.py -v >/tmp/cdc-red.log 2>&1
+          red_rc=$?
+          set -e
+          cat /tmp/cdc-red.log
+          if [ "$red_rc" -eq 0 ]; then
+            echo 'Expected CDC regression test to fail before implementation, but it passed.' >&2
+            exit 1
+          fi
+          grep -q "has no attribute 'NollieCdc'" /tmp/cdc-red.log
+          echo 'Observed expected RED: CDC backend does not exist yet.'
+
+          git apply /tmp/cdc-code.patch
+          python3 -m unittest public/nexbar/tests/test_nollie_cdc.py -v
+          python3 -m unittest discover -s public/nexbar/tests -p 'test_*.py' -v
           python3 -m py_compile public/nexbar/nexbar-bridge.py
-          bash -n public/nexbar/install.sh startup.sh
+          node scripts/build-nexbar-zip.mjs
           unzip -t public/nexbar/nexbar.zip
           git diff --check
-      - name: Publish inspectable WIP source
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -rf .github/workflows
+
           git config user.name "nexbar2-build"
           git config user.email "actions@users.noreply.github.com"
-          git add -A
-          git commit -m "wip: materialize NexBar2 source for hardware integration"
-          git push --force origin HEAD:wip/nexbar2-v1
+          git add public/nexbar
+          git commit -m "feat: support Nollie1 CDC serial backend"
+          git push origin HEAD:wip/nexbar2-v1
