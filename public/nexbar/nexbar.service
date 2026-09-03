@@ -1,6 +1,7 @@
 [Unit]
 Description=NexBar2 SteamOS front light bar
 After=graphical-session.target
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple
