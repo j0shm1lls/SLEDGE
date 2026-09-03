@@ -388,7 +388,7 @@ SLEDGE v1 is done when:
 
 ## 16. External references used for the design
 
-- the prior SLEDGE/NexBar history for OpenRGB, Steam CEF/ACF, shim integration, and support for legacy Nollie HID variants; the validated `16d5:2a01` controller uses CDC serial.
+- the earlier project history for OpenRGB, Steam CEF/ACF, shim integration, and support for legacy Nollie HID variants; the validated `16d5:2a01` controller uses CDC serial.
 - `rpf16rj/steamos-led-bar-release` for a current public implementation showing Steam Game Mode Personalization driving a 17-LED Valve-compatible shim on non-native LED hardware.
 - `rpf16rj/steamos-led-wled` for a current shim-to-external-strip architecture.
 - `caed1994/SteamOS-Utility-Center` for a tested Valve-compatible shim, snapshot UAPI, Game Mode ownership model, and test coverage around Steam manual download pixels.
