@@ -57,12 +57,6 @@ jobs:
           unzip -t public/nexbar/nexbar.zip
       - name: Python and package contract tests
         run: npm run test:python
-      - name: Compile Valve LED shim against Ubuntu headers
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y linux-headers-generic
-          KDIR=$(ls -d /usr/src/linux-headers-*-generic | sort -V | tail -1)
-          make -j1 -C public/nexbar/kernel KDIR="$KDIR"
       - name: Browser smoke at desktop and mobile sizes
         run: |
           npx playwright install --with-deps chromium
@@ -71,7 +65,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf public/nexbar/kernel/.tmp_versions public/nexbar/kernel/*.o public/nexbar/kernel/*.ko public/nexbar/kernel/*.mod public/nexbar/kernel/*.mod.c public/nexbar/kernel/Module.symvers public/nexbar/kernel/modules.order
           git config user.name "nexbar2-build"
           git config user.email "actions@users.noreply.github.com"
           git add -A
