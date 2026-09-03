@@ -22,11 +22,24 @@ index d8193ef..7947971 100644
 +    "@tanstack/router-cli": "^1.167.33"
    }
  }
+diff --git a/playwright.config.ts b/playwright.config.ts
+index d95e564..c54ea08 100644
+--- a/playwright.config.ts
++++ b/playwright.config.ts
+@@ -3,6 +3,8 @@ import { defineConfig } from '@playwright/test'
+ export default defineConfig({
+   testDir: './tests/browser',
+   timeout: 30_000,
++  fullyParallel: false,
++  workers: 1,
+   use: { baseURL: 'http://127.0.0.1:8080' },
+   webServer: { command: 'npm run dev', url: 'http://127.0.0.1:8080', reuseExistingServer: false, timeout: 120_000 },
+   projects: [
 diff --git a/src/lib/led-contract.test.ts b/src/lib/led-contract.test.ts
-index d5e5c14..bb06c8f 100644
+index d5e5c14..d62ff92 100644
 --- a/src/lib/led-contract.test.ts
 +++ b/src/lib/led-contract.test.ts
-@@ -94,3 +94,10 @@ test('fallback idle renderer supports solid, breath, rainbow, and patrol', async
+@@ -94,3 +94,17 @@ test('fallback idle renderer supports solid, breath, rainbow, and patrol', async
    assert.ok(patrol.some((p) => p.r || p.g || p.b))
    assert.ok(patrol.some((p) => !(p.r || p.g || p.b)))
  })
@@ -36,4 +49,11 @@ index d5e5c14..bb06c8f 100644
 +  const pkg = JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8'))
 +  assert.match(pkg.scripts.typecheck, /tsr generate/)
 +  assert.ok(pkg.devDependencies['@tanstack/router-cli'])
++})
++
++test('browser smoke runs serially to keep the preview server stable in CI', async () => {
++  const { readFile } = await import('node:fs/promises')
++  const config = await readFile(new URL('../../playwright.config.ts', import.meta.url), 'utf8')
++  assert.match(config, /fullyParallel:\s*false/)
++  assert.match(config, /workers:\s*1/)
 +})
