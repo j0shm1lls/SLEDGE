@@ -2,7 +2,8 @@
 KERNEL=="valve-leds-shim", MODE="0666", TAG+="uaccess"
 SUBSYSTEM=="leds", KERNEL=="valve-leds*", MODE="0666", TAG+="uaccess"
 
-# Nollie controllers: known VID candidates plus name matches.
+# Nollie controllers: exact CDC serial path first, then HID variants.
+SUBSYSTEM=="tty", ATTRS{idVendor}=="16d5", ATTRS{idProduct}=="2a01", MODE="0666", TAG+="uaccess"
 KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="16d0", MODE="0666", TAG+="uaccess"
 KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="3061", MODE="0666", TAG+="uaccess"
 KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1a86", MODE="0666", TAG+="uaccess"
