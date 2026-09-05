@@ -38,7 +38,7 @@ for index in range(66):
         for i, rgb in enumerate(pixels):
             x = 44 + i * 31.5
             draw.rounded_rectangle((x, y+34, x+22, y+56), radius=4, fill=rgb if any(rgb) else '#252b36')
-    draw.text((32, 366), 'Generated with SLEDGE\u2019s renderer \u00b7 illustrative preview, not hardware footage', font=font(12), fill='#8995a9')
+    draw.text((32, 366), 'Generated with SLEDGE\u2019s effect renderer', font=font(12), fill='#8995a9')
     frames.append(im.quantize(colors=128))
 out = ROOT / 'docs/assets'
 out.mkdir(parents=True, exist_ok=True)

@@ -14,7 +14,7 @@ Give your custom LED hardware a Steam-native front-light experience. Pick colors
 
 ![Simulated 24-pixel boot breathing, rainbow, and progress fill](docs/assets/lighting-preview.gif)
 
-*Illustrative animation generated with SLEDGE's effect renderer—not hardware footage. Steam supplies native light state; the animation demonstrates the renderer's boot, rainbow, and progress-fill behavior.*
+*Boot breathing, rainbow, and progress fill—generated with SLEDGE's effect renderer.*
 
 - **Game Mode controls:** Steam's Front Lights settings control ordinary colors, brightness, and effects.
 - **Direct Nollie output:** the validated controller uses CDC serial; OpenRGB is optional.
