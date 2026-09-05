@@ -1,22 +1,22 @@
-# NexBar2 Implementation Plan
+# SLEDGE — Steam Lighting Effects Daemon for Generic Equipment — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build NexBar2 as a Steam-native-first 17-to-24 LED bridge for the Redux + Nollie1, with automatic fallback behavior, 85 C/80 C thermal protection, the new short download activity pulse, a distributable SteamOS package, and a behaviorally accurate React preview.
+**Goal:** Build SLEDGE (Steam Lighting Effects Daemon for Generic Equipment) as a Steam-native-first 17-logical-to-N-physical LED bridge, validated on BC-250 + Nollie1 + 24 WS2812B pixels, with automatic fallback behavior, 85 C/80 C thermal protection, the new short download activity pulse, a distributable SteamOS package, and a behaviorally accurate React preview.
 
-**Architecture:** One shared behavioral contract governs source arbitration, 17-logical-to-N-physical mapping, and the physical-only download pulse. The target daemon remains a single stdlib-only Python file for field updates, while the preview reimplements the same pure behavior against shared fixtures. A GPL Valve-compatible kernel shim exposes the 17 LED interface Steam Game Mode expects; direct Nollie HID is primary and OpenRGB is fallback.
+**Architecture:** One shared behavioral contract governs source arbitration, 17-logical-to-N-physical mapping, and the physical-only download pulse. The target daemon remains a single stdlib-only Python file for field updates, while the preview reimplements the same pure behavior against shared fixtures. A GPL Valve-compatible kernel shim exposes the 17 LED interface Steam Game Mode expects; exact Nollie1 `16d5:2a01` CDC serial is primary on the validated hardware, known Nollie HID variants are retained, and OpenRGB is fallback.
 
 **Tech Stack:** Python 3 stdlib, Linux kernel module C, systemd user units, udev, React 19, TanStack Start, TypeScript, Tailwind CSS v4, Zustand, Vitest, Vite.
 
-**Spec:** `docs/superpowers/specs/2026-09-02-nexbar2-design.md`
+**Spec:** `docs/superpowers/specs/2026-09-02-sledge-design.md`
 
 ## Global Constraints
 
-- Target hardware is the NexGen3D Redux with ASUS ROG BC-250, Nollie1, and 24 WS2812B LEDs.
+- Validated hardware is ASUS ROG BC-250 + Nollie1 `16d5:2a01` CDC + 24 WS2812B pixels from a 144 LEDs/m strip. NexGen3D Redux is the current reference chassis, not a requirement.
 - Steam-native Game Mode LED writes are preferred over synthetic recreation.
-- Direct Nollie1 hidraw output is preferred; OpenRGB is fallback only.
+- Direct Nollie1 output is preferred; exact `16d5:2a01` CDC serial is first on the validated hardware, known HID variants remain supported, and OpenRGB is fallback only.
 - Python runtime on SteamOS must remain standard-library-only.
-- Normal updates must remain a one-file `nexbar-bridge.py` replacement plus service restart.
+- Normal updates must remain a one-file `sledge-bridge.py` replacement plus service restart.
 - Thermal protection trips at `>= 85 C` and clears only at `<= 80 C`.
 - Unsupported Fremont POST failure patterns are excluded.
 - Fallback download pulse starts only at `>= 10%`, runs from physical LED 0 to the current progress edge, moves no more than one physical LED per 40 Hz frame, disappears at the edge, repeats about every 2 seconds, and is disabled while paused.
@@ -34,37 +34,37 @@
 - `tsconfig.json` — strict TypeScript configuration.
 - `vite.config.ts` — TanStack/Vite config and port 8080.
 - `src/routes/__root.tsx` — document shell, fonts, metadata.
-- `src/routes/index.tsx` — NexBar product simulator page.
+- `src/routes/index.tsx` — SLEDGE product simulator page.
 - `src/styles.css` — Tailwind v4 theme tokens and component-level styling.
 - `src/lib/led-contract.ts` — pure mapping, thermal, progress, pulse, and demo rendering logic.
 - `src/lib/led-contract.test.ts` — behavior parity tests.
 - `src/lib/demo.ts` — deterministic demo timeline.
 - `src/stores/machine.ts` — persisted preview settings and selected state.
-- `src/components/chassis.tsx` — 24-LED Redux front-panel visualization.
+- `src/components/chassis.tsx` — generic reference-rig physical LED visualization.
 - `src/components/state-rail.tsx` — state/simulation selector.
 - `src/components/control-panel.tsx` — fallback idle, mapping, thermal, pulse controls.
 - `src/components/diagnostics-panel.tsx` — source/backend/shim/thermal/download status visualization.
 - `src/components/install-panel.tsx` — first install, daemon update, shim repair instructions, package download.
 - `src/components/how-it-works.tsx` — Steam-native-first architecture explanation.
-- `public/og-nexbar.svg` — custom OG/social art.
+- `public/og-sledge.svg` — custom OG/social art.
 - `startup.sh` — preview bootstrap, never deleted.
 
 ### SteamOS package
 
-- `public/nexbar/nexbar-bridge.py` — single-file daemon.
-- `public/nexbar/tests/test_bridge.py` — stdlib unit tests importing the daemon as a module.
-- `public/nexbar/nexbar.conf.json` — default config.
-- `public/nexbar/nexbar.service` — user service.
-- `public/nexbar/openrgb.service` — optional user service template.
-- `public/nexbar/install.sh` — idempotent installer/repair entry point.
-- `public/nexbar/README.md` — target-machine install, update, acceptance checklist.
-- `public/nexbar/kernel/leds-valve-shim.c` — Valve-compatible shim.
-- `public/nexbar/kernel/Makefile` — module build.
-- `public/nexbar/kernel/99-nexbar.rules` — Nollie and shim permissions.
-- `public/nexbar/kernel/PROVENANCE.md` — upstream origin and modifications.
-- `public/nexbar/kernel/LICENSE` — GPL license text for vendored/derived shim source.
-- `scripts/build-nexbar-zip.mjs` — deterministic package ZIP builder.
-- `public/nexbar/nexbar.zip` — rebuilt distributable archive.
+- `public/sledge/sledge-bridge.py` — single-file daemon.
+- `public/sledge/tests/test_bridge.py` — stdlib unit tests importing the daemon as a module.
+- `public/sledge/sledge.conf.json` — default config.
+- `public/sledge/sledge.service` — user service.
+- `public/sledge/openrgb.service` — optional user service template.
+- `public/sledge/install.sh` — idempotent installer/repair entry point.
+- `public/sledge/README.md` — target-machine install, update, acceptance checklist.
+- `public/sledge/kernel/leds-valve-shim.c` — Valve-compatible shim.
+- `public/sledge/kernel/Makefile` — module build.
+- `public/sledge/kernel/99-sledge.rules` — Nollie and shim permissions.
+- `public/sledge/kernel/PROVENANCE.md` — upstream origin and modifications.
+- `public/sledge/kernel/LICENSE` — GPL license text for vendored/derived shim source.
+- `scripts/build-sledge-zip.mjs` — deterministic package ZIP builder.
+- `public/sledge/sledge.zip` — rebuilt distributable archive.
 
 ---
 
@@ -98,7 +98,7 @@ Use scripts:
 }
 ```
 
-Include React 19, TanStack Start/router, Vite, Tailwind v4, Zustand, and Vitest dependencies compatible with the original NexBar toolchain.
+Include React 19, TanStack Start/router, Vite, Tailwind v4, Zustand, and Vitest dependencies compatible with the original SLEDGE toolchain.
 
 - [ ] **Step 2: Add a smoke test target**
 
@@ -107,7 +107,7 @@ Create a minimal `src/lib/smoke.test.ts`:
 ```ts
 import { describe, expect, it } from 'vitest'
 
-describe('NexBar2 scaffold', () => {
+describe('SLEDGE scaffold', () => {
   it('runs tests', () => expect(true).toBe(true))
 })
 ```
@@ -129,7 +129,7 @@ Expected: all commands exit 0.
 
 ```bash
 git add package.json package-lock.json tsconfig.json vite.config.ts src startup.sh
-git commit -m "chore: scaffold NexBar2 preview"
+git commit -m "chore: scaffold SLEDGE preview"
 ```
 
 ---
@@ -221,7 +221,7 @@ When `progress < 0.10` or `paused`, reset to inactive. On each cycle start, set 
 npm test
 npm run typecheck
 git add src/lib/led-contract.ts src/lib/led-contract.test.ts
-git commit -m "feat: define NexBar LED behavior contract"
+git commit -m "feat: define SLEDGE LED behavior contract"
 ```
 
 ---
@@ -229,9 +229,9 @@ git commit -m "feat: define NexBar LED behavior contract"
 ### Task 3: Build the Python config, mapping, thermal, and pulse core with matching fixtures
 
 **Files:**
-- Create: `public/nexbar/nexbar-bridge.py`
-- Create: `public/nexbar/tests/test_bridge.py`
-- Create: `public/nexbar/nexbar.conf.json`
+- Create: `public/sledge/sledge-bridge.py`
+- Create: `public/sledge/tests/test_bridge.py`
+- Create: `public/sledge/sledge.conf.json`
 
 **Interfaces:**
 - Consumes: semantics fixed by Task 2.
@@ -259,7 +259,7 @@ Legacy migration test: old `laser_period_s` becomes `pulse_period_s`; `laser_tra
 - [ ] **Step 2: Run and confirm failure**
 
 ```bash
-python3 -m unittest public/nexbar/tests/test_bridge.py -v
+python3 -m unittest public/sledge/tests/test_bridge.py -v
 ```
 
 Expected: import/function failures.
@@ -287,8 +287,8 @@ The overlay color must be a brightness lift of the already-filled pixel with a s
 - [ ] **Step 8: Run Python tests and syntax check**
 
 ```bash
-python3 -m unittest public/nexbar/tests/test_bridge.py -v
-python3 -m py_compile public/nexbar/nexbar-bridge.py
+python3 -m unittest public/sledge/tests/test_bridge.py -v
+python3 -m py_compile public/sledge/sledge-bridge.py
 ```
 
 Expected: PASS.
@@ -296,8 +296,8 @@ Expected: PASS.
 - [ ] **Step 9: Commit**
 
 ```bash
-git add public/nexbar/nexbar-bridge.py public/nexbar/nexbar.conf.json public/nexbar/tests
-git commit -m "feat: add tested NexBar daemon core"
+git add public/sledge/sledge-bridge.py public/sledge/sledge.conf.json public/sledge/tests
+git commit -m "feat: add tested SLEDGE daemon core"
 ```
 
 ---
@@ -305,11 +305,11 @@ git commit -m "feat: add tested NexBar daemon core"
 ### Task 4: Add and validate the Valve-compatible kernel shim
 
 **Files:**
-- Create: `public/nexbar/kernel/leds-valve-shim.c`
-- Create: `public/nexbar/kernel/Makefile`
-- Create: `public/nexbar/kernel/99-nexbar.rules`
-- Create: `public/nexbar/kernel/PROVENANCE.md`
-- Create: `public/nexbar/kernel/LICENSE`
+- Create: `public/sledge/kernel/leds-valve-shim.c`
+- Create: `public/sledge/kernel/Makefile`
+- Create: `public/sledge/kernel/99-sledge.rules`
+- Create: `public/sledge/kernel/PROVENANCE.md`
+- Create: `public/sledge/kernel/LICENSE`
 
 **Interfaces:**
 - Consumes: Valve-compatible 17-LED userspace expectations from the approved design.
@@ -319,7 +319,7 @@ git commit -m "feat: add tested NexBar daemon core"
 
 Base the shim on the current `rpf16rj/steamos-led-bar-release` / `caed1994/SteamOS-Utility-Center` implementation. Preserve SPDX and author/license headers.
 
-`PROVENANCE.md` must name upstream repositories, source paths, upstream commit used, license, and NexBar modifications.
+`PROVENANCE.md` must name upstream repositories, source paths, upstream commit used, license, and SLEDGE modifications.
 
 - [ ] **Step 2: Confirm the ABI contract in source**
 
@@ -342,7 +342,7 @@ Rules must grant `MODE="0666", TAG+="uaccess"` to the shim device and Valve LED 
 When kernel headers are present:
 
 ```bash
-make -C public/nexbar/kernel
+make -C public/sledge/kernel
 ```
 
 Expected: `leds-valve-shim.ko` builds.
@@ -350,8 +350,8 @@ Expected: `leds-valve-shim.ko` builds.
 If headers are absent in the dev container, run source-level checks instead:
 
 ```bash
-grep -q 'VALVE_NUM_LEDS 17' public/nexbar/kernel/leds-valve-shim.c
-grep -q 'valve-leds-shim' public/nexbar/kernel/leds-valve-shim.c
+grep -q 'VALVE_NUM_LEDS 17' public/sledge/kernel/leds-valve-shim.c
+grep -q 'valve-leds-shim' public/sledge/kernel/leds-valve-shim.c
 ```
 
 Record the header limitation in the final verification notes rather than claiming a module build passed.
@@ -359,7 +359,7 @@ Record the header limitation in the final verification notes rather than claimin
 - [ ] **Step 5: Commit**
 
 ```bash
-git add public/nexbar/kernel
+git add public/sledge/kernel
 git commit -m "feat: add Valve LED compatibility shim"
 ```
 
@@ -368,8 +368,8 @@ git commit -m "feat: add Valve LED compatibility shim"
 ### Task 5: Implement shim snapshot parsing and Steam-native ownership
 
 **Files:**
-- Modify: `public/nexbar/nexbar-bridge.py`
-- Modify: `public/nexbar/tests/test_bridge.py`
+- Modify: `public/sledge/sledge-bridge.py`
+- Modify: `public/sledge/tests/test_bridge.py`
 
 **Interfaces:**
 - Consumes: 100-byte VLED v1 snapshots from Task 4.
@@ -399,9 +399,9 @@ Open `/dev/valve-leds-shim` non-fatally, read snapshots, track the last observed
 - [ ] **Step 5: Run tests and commit**
 
 ```bash
-python3 -m unittest public/nexbar/tests/test_bridge.py -v
-python3 -m py_compile public/nexbar/nexbar-bridge.py
-git add public/nexbar
+python3 -m unittest public/sledge/tests/test_bridge.py -v
+python3 -m py_compile public/sledge/sledge-bridge.py
+git add public/sledge
 git commit -m "feat: consume Steam LED shim state"
 ```
 
@@ -410,8 +410,8 @@ git commit -m "feat: consume Steam LED shim state"
 ### Task 6: Port the proven Steam download observer as fallback only
 
 **Files:**
-- Modify: `public/nexbar/nexbar-bridge.py`
-- Modify: `public/nexbar/tests/test_bridge.py`
+- Modify: `public/sledge/sledge-bridge.py`
+- Modify: `public/sledge/tests/test_bridge.py`
 
 **Interfaces:**
 - Consumes: CEF SharedJSContext data, ACF state, local steamapps hints, elapsed time.
@@ -460,29 +460,30 @@ Keep raw observation separate from session policy so depot gaps, pauses, spikes,
 - [ ] **Step 5: Run tests and commit**
 
 ```bash
-python3 -m unittest public/nexbar/tests/test_bridge.py -v
-git add public/nexbar/nexbar-bridge.py public/nexbar/tests/test_bridge.py
+python3 -m unittest public/sledge/tests/test_bridge.py -v
+git add public/sledge/sledge-bridge.py public/sledge/tests/test_bridge.py
 git commit -m "feat: add Steam download fallback tracker"
 ```
 
 ---
 
-### Task 7: Implement Nollie HID and OpenRGB backends with watchdog behavior
+### Task 7: Implement Nollie direct and OpenRGB backends with reconnect/watchdog behavior
 
 **Files:**
-- Modify: `public/nexbar/nexbar-bridge.py`
-- Modify: `public/nexbar/tests/test_bridge.py`
+- Modify: `public/sledge/sledge-bridge.py`
+- Modify: `public/sledge/tests/test_bridge.py`
 
 **Interfaces:**
 - Consumes: list of physical RGB tuples.
 - Produces:
+  - `NollieCdc.push(frame, now)`
   - `NollieHID.push(frame, now)`
   - `OpenRGBBackend.push(frame, now)`
   - `BackendManager.push(frame, now)`
 
 - [ ] **Step 1: Write packet-construction tests**
 
-For Nollie HID, assert:
+For Nollie1 `16d5:2a01` CDC, assert 64-byte indexed GRB reports, 21 LEDs/report, and a `0xFF` latch with no HID MOS/init packets. For retained Nollie HID variants, assert:
 
 - 65-byte packets,
 - GRB ordering,
@@ -491,9 +492,9 @@ For Nollie HID, assert:
 - 0xFE 0x03 LED-count init,
 - 0xFF latch.
 
-- [ ] **Step 2: Port direct hidraw discovery and transport**
+- [ ] **Step 2: Implement CDC-first discovery and retain HID variants**
 
-Prefer explicit Nollie product/manufacturer/path matches and known USB VID evidence. Log the chosen `/dev/hidrawN` once.
+Prefer `/dev/serial/by-id/` for exact Nollie1 `16d5:2a01`, fall back to ttyACM sysfs ancestry for that exact VID/PID, and explicitly exclude it from HID selection. Retain explicit product/manufacturer/VID matching for known HID variants. Log the chosen stable device path once.
 
 - [ ] **Step 3: Add watchdog tests**
 
@@ -510,8 +511,8 @@ Preserve protocol 5, Nollie controller substring selection, custom/direct mode s
 - [ ] **Step 6: Run tests and commit**
 
 ```bash
-python3 -m unittest public/nexbar/tests/test_bridge.py -v
-git add public/nexbar/nexbar-bridge.py public/nexbar/tests/test_bridge.py
+python3 -m unittest public/sledge/tests/test_bridge.py -v
+git add public/sledge/sledge-bridge.py public/sledge/tests/test_bridge.py
 git commit -m "feat: add resilient Nollie output backends"
 ```
 
@@ -520,8 +521,8 @@ git commit -m "feat: add resilient Nollie output backends"
 ### Task 8: Add arbitration, rendering, CLI, and `--test`
 
 **Files:**
-- Modify: `public/nexbar/nexbar-bridge.py`
-- Modify: `public/nexbar/tests/test_bridge.py`
+- Modify: `public/sledge/sledge-bridge.py`
+- Modify: `public/sledge/tests/test_bridge.py`
 
 **Interfaces:**
 - Consumes: thermal latch, shim source, download tracker, idle config, backend manager.
@@ -569,16 +570,16 @@ It should show Steam-blue breathing then idle, exit cleanly on `BrokenPipeError`
 - [ ] **Step 6: Run full Python tests**
 
 ```bash
-python3 -m unittest public/nexbar/tests/test_bridge.py -v
-python3 -m py_compile public/nexbar/nexbar-bridge.py
-python3 public/nexbar/nexbar-bridge.py --help >/dev/null
+python3 -m unittest public/sledge/tests/test_bridge.py -v
+python3 -m py_compile public/sledge/sledge-bridge.py
+python3 public/sledge/sledge-bridge.py --help >/dev/null
 ```
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add public/nexbar/nexbar-bridge.py public/nexbar/tests/test_bridge.py
-git commit -m "feat: complete NexBar state arbitration"
+git add public/sledge/sledge-bridge.py public/sledge/tests/test_bridge.py
+git commit -m "feat: complete SLEDGE state arbitration"
 ```
 
 ---
@@ -586,8 +587,8 @@ git commit -m "feat: complete NexBar state arbitration"
 ### Task 9: Add the local control and diagnostics server
 
 **Files:**
-- Modify: `public/nexbar/nexbar-bridge.py`
-- Modify: `public/nexbar/tests/test_bridge.py`
+- Modify: `public/sledge/sledge-bridge.py`
+- Modify: `public/sledge/tests/test_bridge.py`
 
 **Interfaces:**
 - Consumes: live daemon diagnostics and config.
@@ -625,9 +626,9 @@ Use >=52 px touch targets. Clearly label Steam-native status vs fallback control
 - [ ] **Step 5: Run tests and commit**
 
 ```bash
-python3 -m unittest public/nexbar/tests/test_bridge.py -v
-git add public/nexbar/nexbar-bridge.py public/nexbar/tests/test_bridge.py
-git commit -m "feat: add NexBar control diagnostics"
+python3 -m unittest public/sledge/tests/test_bridge.py -v
+git add public/sledge/sledge-bridge.py public/sledge/tests/test_bridge.py
+git commit -m "feat: add SLEDGE control diagnostics"
 ```
 
 ---
@@ -635,10 +636,10 @@ git commit -m "feat: add NexBar control diagnostics"
 ### Task 10: Build the SteamOS installer, services, and package documentation
 
 **Files:**
-- Create: `public/nexbar/install.sh`
-- Create: `public/nexbar/nexbar.service`
-- Create: `public/nexbar/openrgb.service`
-- Create: `public/nexbar/README.md`
+- Create: `public/sledge/install.sh`
+- Create: `public/sledge/sledge.service`
+- Create: `public/sledge/openrgb.service`
+- Create: `public/sledge/README.md`
 
 **Interfaces:**
 - Consumes: daemon, config, kernel files.
@@ -647,46 +648,46 @@ git commit -m "feat: add NexBar control diagnostics"
 - [ ] **Step 1: Write installer shell-syntax smoke checks**
 
 ```bash
-sh -n public/nexbar/install.sh
+sh -n public/sledge/install.sh
 ```
 
 - [ ] **Step 2: Implement daemon install/update behavior**
 
-Preserve an existing config. Install bridge into a user-owned data path. Install/enable `nexbar.service` as a user unit and enable linger.
+Preserve an existing config. Install bridge into a user-owned data path. Install/enable `sledge.service` as a user unit and enable linger.
 
 - [ ] **Step 3: Implement optional shim install/repair path**
 
 The default installer detects the shim. If missing and matching headers/build tools are available, it can build/install it with clear consent/output. A `--shim-only` or `--repair-shim` path rebuilds only the module.
 
-- [ ] **Step 4: Make direct HID independent of OpenRGB**
+- [ ] **Step 4: Make direct Nollie access independent of OpenRGB**
 
-If Nollie HID is usable, installation succeeds without OpenRGB. Ship `openrgb.service` as an optional template only.
+If a supported direct Nollie transport is usable (CDC first on `16d5:2a01`), installation succeeds without OpenRGB. Ship `openrgb.service` as an optional template only.
 
 - [ ] **Step 5: Write README acceptance checklist**
 
 Document:
 
 - first install,
-- copying a new `nexbar-bridge.py` and restarting the service,
+- copying a new `sledge-bridge.py` and restarting the service,
 - kernel-update shim repair,
 - expected startup journal lines,
 - native Steam Personalization test,
 - fallback test,
 - 85/80 thermal behavior,
-- 120-second direct-HID stability check.
+- 120-second direct-Nollie stability check, using CDC on the validated `16d5:2a01` hardware.
 
 - [ ] **Step 6: Run syntax/compile checks and commit**
 
 ```bash
-sh -n public/nexbar/install.sh
-python3 -m py_compile public/nexbar/nexbar-bridge.py
-git add public/nexbar
+sh -n public/sledge/install.sh
+python3 -m py_compile public/sledge/sledge-bridge.py
+git add public/sledge
 git commit -m "feat: add SteamOS installer and service package"
 ```
 
 ---
 
-### Task 11: Build the NexBar2 preview UI around the behavioral contract
+### Task 11: Build the SLEDGE preview UI around the behavioral contract
 
 **Files:**
 - Create: `src/lib/demo.ts`
@@ -699,11 +700,11 @@ git commit -m "feat: add SteamOS installer and service package"
 - Create: `src/components/how-it-works.tsx`
 - Modify: `src/routes/index.tsx`
 - Modify: `src/styles.css`
-- Create: `public/og-nexbar.svg`
+- Create: `public/og-sledge.svg`
 
 **Interfaces:**
 - Consumes: `src/lib/led-contract.ts` and persistent preview settings.
-- Produces: interactive desktop/mobile NexBar2 simulator.
+- Produces: interactive desktop/mobile SLEDGE simulator.
 
 - [ ] **Step 1: Add deterministic demo states**
 
@@ -717,7 +718,7 @@ Selecting a manual state exits the demo until `Restart demo` is pressed.
 
 - [ ] **Step 2: Implement the chassis visual**
 
-Render a near-black Redux-style front fascia with exactly 24 physical LED emitters, small white power indicator when on, no glossy gaming-RGB treatment, and subtle light spill.
+Render a near-black generic reference-rig visualization with 24 physical LED emitters by default, small white power indicator when on, no glossy gaming-RGB treatment, and subtle light spill.
 
 - [ ] **Step 3: Implement state rail and diagnostics**
 
@@ -738,20 +739,20 @@ Diagnostics show simulated source/backend/mapping/temperature/progress and expli
 
 Controls include fallback color, brightness, effect, mapping, reverse, physical count, thermal trip/clear, pulse period, progress, and paused toggle.
 
-When native Steam state is selected, explain that ordinary color/effect control comes from Steam Personalization rather than NexBar's fallback controls.
+When native Steam state is selected, explain that ordinary color/effect control comes from Steam Personalization rather than SLEDGE's fallback controls.
 
 - [ ] **Step 5: Implement install/how-it-works sections**
 
 Show the primary path:
 
 ```text
-Steam Game Mode -> valve-leds shim -> NexBar bridge -> 17->24 mapping -> Nollie1
+Steam Game Mode -> valve-leds shim -> SLEDGE bridge -> 17->24 mapping -> Nollie1
 ```
 
 And the fallback path:
 
 ```text
-CEF/ACF + thermal -> NexBar renderer -> mapping -> Nollie1/OpenRGB
+CEF/ACF + thermal -> SLEDGE renderer -> mapping -> Nollie1/OpenRGB
 ```
 
 - [ ] **Step 6: Apply theme and responsive behavior**
@@ -780,8 +781,8 @@ Expected: PASS.
 - [ ] **Step 8: Commit**
 
 ```bash
-git add src public/og-nexbar.svg
-git commit -m "feat: build NexBar2 product simulator"
+git add src public/og-sledge.svg
+git commit -m "feat: build SLEDGE product simulator"
 ```
 
 ---
@@ -789,34 +790,34 @@ git commit -m "feat: build NexBar2 product simulator"
 ### Task 12: Build the distributable ZIP and final automated verification
 
 **Files:**
-- Create: `scripts/build-nexbar-zip.mjs`
-- Create/replace: `public/nexbar/nexbar.zip`
+- Create: `scripts/build-sledge-zip.mjs`
+- Create/replace: `public/sledge/sledge.zip`
 - Modify: `package.json`
 
 **Interfaces:**
 - Consumes: all SteamOS package files.
-- Produces: downloadable `public/nexbar/nexbar.zip` and repeatable package build command.
+- Produces: downloadable `public/sledge/sledge.zip` and repeatable package build command.
 
 - [ ] **Step 1: Implement deterministic ZIP creation**
 
 Add script:
 
 ```json
-"package:nexbar": "node scripts/build-nexbar-zip.mjs"
+"package:sledge": "node scripts/build-sledge-zip.mjs"
 ```
 
 The ZIP root must contain:
 
 ```text
-nexbar-bridge.py
-nexbar.conf.json
-nexbar.service
+sledge-bridge.py
+sledge.conf.json
+sledge.service
 openrgb.service
 install.sh
 README.md
 kernel/leds-valve-shim.c
 kernel/Makefile
-kernel/99-nexbar.rules
+kernel/99-sledge.rules
 kernel/PROVENANCE.md
 kernel/LICENSE
 ```
@@ -826,8 +827,8 @@ Do not include tests, node_modules, build outputs, or secrets.
 - [ ] **Step 2: Rebuild package and inspect contents**
 
 ```bash
-npm run package:nexbar
-unzip -l public/nexbar/nexbar.zip
+npm run package:sledge
+unzip -l public/sledge/sledge.zip
 ```
 
 Expected: only the intended package files.
@@ -838,9 +839,9 @@ Expected: only the intended package files.
 npm test
 npm run typecheck
 npm run build
-python3 -m unittest public/nexbar/tests/test_bridge.py -v
-python3 -m py_compile public/nexbar/nexbar-bridge.py
-sh -n public/nexbar/install.sh
+python3 -m unittest public/sledge/tests/test_bridge.py -v
+python3 -m py_compile public/sledge/sledge-bridge.py
+sh -n public/sledge/install.sh
 ```
 
 Expected: all pass.
@@ -857,8 +858,8 @@ Expected: HTTP success on port 8080.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add package.json scripts/build-nexbar-zip.mjs public/nexbar/nexbar.zip
-git commit -m "build: package NexBar2 SteamOS release"
+git add package.json scripts/build-sledge-zip.mjs public/sledge/sledge.zip
+git commit -m "build: package SLEDGE SteamOS release"
 ```
 
 ---
@@ -895,20 +896,20 @@ Verify >=52 px touch targets, no horizontal clipping, chassis remains legible, a
 npm test
 npm run typecheck
 npm run build
-python3 -m unittest public/nexbar/tests/test_bridge.py -v
-python3 -m py_compile public/nexbar/nexbar-bridge.py
-sh -n public/nexbar/install.sh
-npm run package:nexbar
+python3 -m unittest public/sledge/tests/test_bridge.py -v
+python3 -m py_compile public/sledge/sledge-bridge.py
+sh -n public/sledge/install.sh
+npm run package:sledge
 ```
 
 - [ ] **Step 4: Prepare hardware acceptance handoff**
 
-Tell the user to install/copy the package on the Redux machine and verify these journal outcomes:
+Tell the user to install/copy the package on the BC-250/Nollie1 reference rig and verify these journal outcomes:
 
 ```text
-nexbar running
+sledge running
 control UI http://127.0.0.1:1873/
-hidraw ... leds=24
+cdc /dev/serial/by-id/usb-nollie.cn_Nollie1_...-if00 (...) 115200 8N1 leds=24
 Steam LED shim present ...
 Steam native LED control active ...
 ```
@@ -920,7 +921,7 @@ If native Game Mode writes do not occur, expected diagnostics must explicitly sa
 ```bash
 git status --short
 git add -A
-git commit -m "fix: complete NexBar2 release verification"
+git commit -m "fix: complete SLEDGE release verification"
 ```
 
 Only create this commit if Task 13 changed files.

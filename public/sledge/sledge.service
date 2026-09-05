@@ -1,0 +1,14 @@
+[Unit]
+Description=SLEDGE SteamOS front light bar
+After=graphical-session.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+ExecStart=%h/.local/lib/sledge/sledge-bridge.py --config %h/.config/sledge/sledge.conf.json --backend auto
+Restart=always
+RestartSec=2
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,11 @@
+[Unit]
+Description=OpenRGB SDK server (optional SLEDGE fallback)
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/openrgb --server --server-port 6742 --noautoconnect
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target
