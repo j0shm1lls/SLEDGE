@@ -2,6 +2,14 @@
 
 Start with the [README quick install](../README.md#install). This guide covers prerequisites and recovery. No preview website or Node.js runtime is required.
 
+## Prepare the Nollie1 first
+
+Download **NollieRGB v2 or newer** from [Nollie's official software page](https://nolliergb.com/software/) and use its firmware-update feature for your Nollie1 before installing SLEDGE. Follow the controller-specific prompts on a computer supported by NollieRGB, and allow the update to finish before disconnecting the controller.
+
+For the recommended BC-250 startup experience, choose your preferred **Boot Canvas** effect and set **Color1** to SLEDGE's blue, `#3AA7FF` / RGB `58, 167, 255`, or the nearest blue offered by the app. Delete **Loop Canvas** to leave the controller's onboard idle state blank after the boot animation. Save/apply the settings and close NollieRGB before SLEDGE takes over.
+
+These onboard effects are separate from SLEDGE's software fallbacks. Removing Loop Canvas does not suppress SLEDGE's boot, idle, or thermal effects. The [local configuration page](http://127.0.0.1:1873/) controls SLEDGE's fallback settings after installation; see [daily use](../README.md#daily-use).
+
 ## Preparing SteamOS
 
 1. Use Desktop Mode and open Konsole. Run `uname -r` to identify the running kernel.

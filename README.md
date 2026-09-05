@@ -36,7 +36,19 @@ Other supported controller paths exist in the code, but this is the hardware-tes
 
 ## Install
 
-### 1. Check prerequisites in Desktop Mode
+### 1. Prepare the Nollie1 firmware and startup effect
+
+Before installing SLEDGE, download **NollieRGB v2 or newer** from the [official Nollie software page](https://nolliergb.com/software/). Use NollieRGB on a compatible computer to update your Nollie1 firmware, following the app's instructions for that controller. Let the update finish before disconnecting it.
+
+Recommended onboard setup for the BC-250:
+
+- **Boot Canvas:** choose your preferred startup effect and set **Color1** to the blue closest to **`#3AA7FF` (RGB 58, 167, 255)**, SLEDGE's Steam-blue color. Enter that value if the color picker supports it. This gives the controller a blue startup animation while the BC-250 powers on.
+- **Loop Canvas:** delete the Loop Canvas for a blank onboard idle state after the boot effect, when no software is driving the strip.
+- Save/apply the canvas settings to the controller, then close NollieRGB before starting SLEDGE so the apps do not compete for the controller.
+
+The canvases run on the Nollie1. SLEDGE's own boot/idle fallback effects are separate and may still light the strip while Steam is not in control. Deleting Loop Canvas does not disable those software effects.
+
+### 2. Check prerequisites in Desktop Mode
 
 You need Python 3, Bash, a compiler and `make`, administrator access through `sudo`, and **headers matching the running kernel**. The installer does not download these prerequisites.
 
@@ -51,7 +63,7 @@ ls -l /dev/serial/by-id/
 
 For the validated Nollie1, the serial list should include `usb-nollie.cn_Nollie1_…-if00`. A header directory alone does not prove an exact match: use the official header package for your running SteamOS kernel. If any prerequisite is missing, see [preparing SteamOS](docs/INSTALL.md#preparing-steamos) before continuing.
 
-### 2. Download, extract, install
+### 3. Download, extract, install
 
 Download [sledge.zip](public/sledge/sledge.zip) using GitHub's **Download raw file** button. Extract it into a folder you will keep, then open a terminal **inside the extracted folder** and run:
 
@@ -63,7 +75,7 @@ Run this as your normal desktop user, **not** `sudo bash install.sh`. The instal
 
 If headers do not match or the module fails to load, stop and inspect the error. Do not force-load a module or disable signature verification. The package is linked from this branch; it is not a claim that a tagged release is already published.
 
-### 3. Let Steam take control
+### 4. Let Steam take control
 
 Enter Game Mode → **Settings → Customization → Front Lights**, then change a color or effect. If Steam was already open during installation, restart Steam/Game Mode if the controls have not appeared.
 
@@ -79,7 +91,16 @@ device:   /dev/serial/by-id/usb-nollie.cn_Nollie1_…-if00
 
 ## Daily use
 
-Use **Steam Front Lights** for ordinary lighting. Use the local control page for fallback behavior, LED count, mapping, direction, and diagnostics. Saving a backend change shows a persistent restart notice; apply it with:
+Use **Steam Front Lights** for ordinary lighting. For SLEDGE settings, open **[http://127.0.0.1:1873](http://127.0.0.1:1873/)** in a browser on the BC-250 while the service is running.
+
+The local configuration page lets you:
+
+- Check the active owner (`steam-native` when Steam has control), controller/backend, shim status, and temperature.
+- Set physical LED count, mapping, and **LED Direction**.
+- Choose fallback color, effect, and brightness; set fallback brightness to **0%** if you want its idle effect dark. The software boot effect and thermal override are separate.
+- Adjust thermal thresholds and download-fallback timing.
+
+Click **Save SLEDGE settings** to persist changes. Native Steam colors and effects still come from Game Mode. Saving a backend change shows a persistent restart notice; apply it with:
 
 ```bash
 systemctl --user restart sledge.service
