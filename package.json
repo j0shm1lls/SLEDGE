@@ -7,7 +7,7 @@
     "dev": "vite dev --host 0.0.0.0 --port 8080",
     "build": "tsr generate && vite build",
     "typecheck": "tsr generate && tsc --noEmit",
-    "test": "node --experimental-strip-types --test src/lib/led-contract.test.ts",
+    "test": "node --experimental-strip-types --test src/lib/led-contract.test.ts tests/control-ui.test.mjs",
     "test:python": "python3 -m unittest discover -s public/sledge/tests -p 'test_*.py' -v",
     "package:sledge": "node scripts/build-sledge-zip.mjs"
   },

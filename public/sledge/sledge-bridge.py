@@ -1564,7 +1564,8 @@ _CEF_READ = r"""
 
 
 class CefObserver:
-    def __init__(self):
+    def __init__(self, allow_steam_debugging: bool = False):
+        self.allow_steam_debugging = allow_steam_debugging
         self.cdp: Optional[_Cdp] = None
         self.connected_port: Optional[int] = None
         self.last_try = 0.0
@@ -1670,6 +1671,8 @@ class CefObserver:
         return DownloadObservation(None, False, False, local, 'CEF idle', explicit_pause=False)
 
     def observe(self) -> Optional[DownloadObservation]:
+        if not self.allow_steam_debugging:
+            return None
         now = time.monotonic()
         if not self.cdp:
             if now - self.last_try < 5:
@@ -1744,13 +1747,14 @@ CONTROL_HTML = r'''<!doctype html><html><head><meta name="viewport" content="wid
 body{font:16px system-ui;background:#0b0c10;color:#f4f7fb;max-width:820px;margin:auto;padding:24px}h1{margin-bottom:4px}p{color:#9aa6b5;line-height:1.5}.card{background:#13151c;border:1px solid #2a2e3a;border-radius:12px;padding:18px;margin:16px 0}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 20px}.row{display:flex;justify-content:space-between;gap:18px;padding:10px 0;border-bottom:1px solid #252935}.row:last-child{border:0}code{color:#8cc7ff}button,input,select{min-height:52px;font:inherit}input,select{box-sizing:border-box;width:100%;background:#0b0c10;color:#f4f7fb;border:1px solid #343947;border-radius:8px;padding:0 12px}input[type=color]{padding:5px}input[type=checkbox]{width:24px;min-height:24px}button{background:#4aa3ff;border:0;border-radius:8px;padding:0 18px;font-weight:700;cursor:pointer;transition:transform .08s ease,filter .15s ease,opacity .15s ease}button:hover{filter:brightness(1.06)}button:active{transform:translateY(2px) scale(.985)}button:disabled{opacity:.72;cursor:wait}label{display:grid;gap:7px;margin:6px 0}.check{display:flex;align-items:center;gap:10px;min-height:52px}.hint{font-size:13px;color:#7f8a9c}.toast{position:fixed;right:24px;bottom:24px;z-index:10;max-width:min(360px,calc(100vw - 48px));background:#13151c;color:#f4f7fb;border:1px solid #4aa3ff;border-radius:10px;padding:12px 16px;box-shadow:0 12px 36px #0008;opacity:0;transform:translateY(10px);pointer-events:none;transition:opacity .18s ease,transform .18s ease}.toast.show{opacity:1;transform:translateY(0)}.toast.error{border-color:#e24b4b}@media(prefers-reduced-motion:reduce){button,.toast{transition:none}button:active{transform:none}}@media(max-width:640px){.grid{grid-template-columns:1fr}.toast{right:16px;bottom:16px;max-width:calc(100vw - 32px)}}</style></head><body>
 <h1>SLEDGE</h1><p>Steam Personalization is the preferred color/effect UI. This local page controls fallback behavior, physical mapping, safety thresholds and diagnostics.</p>
 <div class="card" id="status">Loading…</div>
+<p id="restart-notice" role="status" hidden>Backend change saved. Restart SLEDGE to apply it: <code>systemctl --user restart sledge.service</code></p>
 <div class="card"><div class="grid">
 <label>Fallback color <input id="color" type="color"></label>
 <label>Fallback effect <select id="effect"><option>solid</option><option>breath</option><option>rainbow</option><option>patrol</option></select></label>
 <label>Brightness (%) <input id="brightness" type="number" min="0" max="100" step="1"></label>
 <label>Physical LEDs <input id="physical" type="number" min="1" max="256" step="1"></label>
 <label>Mapping <select id="mapping"><option>stretch</option><option>nearest</option><option>center</option></select></label>
-<label>Backend <select id="backend"><option>auto</option><option>cdc</option><option>hid</option><option>openrgb</option></select></label>
+<label>Backend <select id="backend"><option>auto</option><option>cdc</option><option>hid</option><option>openrgb</option></select><span class="hint">Backend changes take effect after restarting SLEDGE.</span></label>
 <label>Thermal trip °C <input id="trip" type="number" min="40" max="120" step="1"></label>
 <label>Thermal clear °C <input id="clear" type="number" min="35" max="119" step="1"></label>
 <label>Pause → idle (s) <input id="pause" type="number" min="0" max="600" step="1"></label>
@@ -1762,30 +1766,58 @@ const q=(id)=>document.getElementById(id);
 const fields={color:q('color'),effect:q('effect'),brightness:q('brightness'),physical:q('physical'),mapping:q('mapping'),backend:q('backend'),trip:q('trip'),clear:q('clear'),pause:q('pause'),pulse:q('pulse'),direction:q('direction')};
 const save=q('save'),toast=q('toast');let saveResetTimer=null,toastTimer=null;
 function showToast(message,kind='ok'){toast.textContent=message;toast.className='toast show '+kind;clearTimeout(toastTimer);toastTimer=setTimeout(()=>{toast.className='toast'},2600)}
-async function refreshStatus(){const s=await fetch('/api/status').then(r=>r.json());q('status').innerHTML=Object.entries(s).map(([k,v])=>`<div class=row><code>${k}</code><span>${v??'—'}</span></div>`).join('')}
+async function refreshStatus(){const s=await fetch('/api/status').then(r=>r.json());q('restart-notice').hidden=!s.restart_required;q('status').innerHTML=Object.entries(s).map(([k,v])=>`<div class=row><code>${k}</code><span>${v??'—'}</span></div>`).join('')}
 async function loadConfig(){const c=await fetch('/api/config').then(r=>r.json());fields.color.value=c.idle.color;fields.effect.value=c.idle.effect;fields.brightness.value=c.idle.brightness;fields.physical.value=c.leds.physical;fields.mapping.value=c.leds.mapping;fields.backend.value=c.leds.backend;fields.trip.value=c.thermal.overheat_c;fields.clear.value=c.thermal.clear_c;fields.pause.value=c.download.pause_idle_s;fields.pulse.value=c.download.pulse_period_s;fields.direction.value=c.leds.reverse?'forward':'reverse'}
-save.onclick=async()=>{save.disabled=true;save.textContent='Saving…';clearTimeout(saveResetTimer);try{const c=await fetch('/api/config').then(r=>r.json());c.idle.color=fields.color.value;c.idle.effect=fields.effect.value;c.idle.brightness=+fields.brightness.value;c.leds.physical=+fields.physical.value;c.leds.mapping=fields.mapping.value;c.leds.backend=fields.backend.value;c.leds.reverse=fields.direction.value==='forward';c.thermal.overheat_c=+fields.trip.value;c.thermal.clear_c=+fields.clear.value;c.download.pause_idle_s=+fields.pause.value;c.download.pulse_period_s=+fields.pulse.value;const response=await fetch('/api/config',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(c)});if(!response.ok){let message='HTTP '+response.status;try{const data=await response.json();if(data&&data.error)message=data.error}catch(_){}throw new Error(message)}save.textContent='✓ Saved';showToast('SLEDGE settings saved!','ok');try{await loadConfig();await refreshStatus()}catch(_){}saveResetTimer=setTimeout(()=>{save.textContent='Save SLEDGE settings';save.disabled=false},1200)}catch(err){const message=err instanceof Error?err.message:String(err);save.textContent='Save SLEDGE settings';save.disabled=false;showToast('Save failed: '+message,'error')}};loadConfig();refreshStatus();setInterval(refreshStatus,1500)
+save.onclick=async()=>{save.disabled=true;save.textContent='Saving…';clearTimeout(saveResetTimer);try{const c=await fetch('/api/config').then(r=>r.json());c.idle.color=fields.color.value;c.idle.effect=fields.effect.value;c.idle.brightness=+fields.brightness.value;c.leds.physical=+fields.physical.value;c.leds.mapping=fields.mapping.value;c.leds.backend=fields.backend.value;c.leds.reverse=fields.direction.value==='forward';c.thermal.overheat_c=+fields.trip.value;c.thermal.clear_c=+fields.clear.value;c.download.pause_idle_s=+fields.pause.value;c.download.pulse_period_s=+fields.pulse.value;const response=await fetch('/api/config',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(c)});if(!response.ok){let message='HTTP '+response.status;try{const data=await response.json();if(data&&data.error)message=data.error}catch(_){}throw new Error(message)}const result=await response.json();q('restart-notice').hidden=!result.restart_required;save.textContent='✓ Saved';if(result.restart_required){showToast('Settings saved. Restart SLEDGE to apply the backend change.','ok')}else{showToast('SLEDGE settings saved!','ok')};try{await loadConfig();await refreshStatus()}catch(_){}saveResetTimer=setTimeout(()=>{save.textContent='Save SLEDGE settings';save.disabled=false},1200)}catch(err){const message=err instanceof Error?err.message:String(err);save.textContent='Save SLEDGE settings';save.disabled=false;showToast('Save failed: '+message,'error')}};loadConfig();refreshStatus();setInterval(refreshStatus,1500)
 </script></body></html>'''
 
 
 def start_control_server(cfg_path: Path, status: RuntimeStatus, port: int) -> http.server.ThreadingHTTPServer:
+    startup_backend = load_config(cfg_path)['leds']['backend']
+
+    def control_status():
+        snapshot = status.snapshot()
+        snapshot['restart_required'] = load_config(cfg_path)['leds']['backend'] != startup_backend
+        return snapshot
+
     class Handler(http.server.BaseHTTPRequestHandler):
         def log_message(self, fmt, *args): return
+        def _local_request(self):
+            hosts = self.headers.get_all('Host', [])
+            allowed = {f'127.0.0.1:{self.server.server_port}', f'localhost:{self.server.server_port}'}
+            if self.server.server_port == 80:
+                allowed.update(('127.0.0.1', 'localhost'))
+            origins = self.headers.get_all('Origin', [])
+            if (len(hosts) != 1 or hosts[0] not in allowed or len(origins) > 1
+                    or (origins and origins[0] != 'http://' + hosts[0])
+                    or self.headers.get('Sec-Fetch-Site') == 'cross-site'):
+                self._send(403, b'{"error":"Local same-origin requests only"}', 'application/json')
+                return False
+            return True
         def _send(self, code: int, body: bytes, ctype: str):
             self.send_response(code); self.send_header('Content-Type', ctype); self.send_header('Content-Length', str(len(body))); self.send_header('Cache-Control','no-store'); self.end_headers(); self.wfile.write(body)
         def do_GET(self):
-            if self.path == '/api/status': self._send(200, json.dumps(status.snapshot()).encode(), 'application/json'); return
+            if not self._local_request(): return
+            if self.path == '/api/status': self._send(200, json.dumps(control_status()).encode(), 'application/json'); return
             if self.path == '/api/config': self._send(200, json.dumps(load_config(cfg_path)).encode(), 'application/json'); return
             if self.path == '/': self._send(200, CONTROL_HTML.encode(), 'text/html; charset=utf-8'); return
             self._send(404, b'not found', 'text/plain')
         def do_POST(self):
+            if not self._local_request(): return
             if self.path != '/api/config': self._send(404,b'not found','text/plain'); return
+            if self.headers.get_content_type() != 'application/json':
+                self._send(415, b'{"error":"application/json required"}', 'application/json'); return
             try:
-                length = min(65536, int(self.headers.get('content-length','0')))
+                lengths = self.headers.get_all('Content-Length', [])
+                if len(lengths) != 1 or self.headers.get('Transfer-Encoding'):
+                    raise ValueError('One Content-Length header required; transfer encoding is unsupported')
+                length = int(lengths[0])
+                if not 0 < length <= 65536:
+                    self._send(413, b'{"error":"Request body must be 1..65536 bytes"}', 'application/json'); return
                 data = json.loads(self.rfile.read(length))
                 if not isinstance(data, dict): raise ValueError('object required')
                 cfg = normalize_config(data); save_config(cfg_path, cfg)
-                self._send(200, json.dumps({'ok':True}).encode(), 'application/json')
+                self._send(200, json.dumps({'ok':True, 'restart_required':cfg['leds']['backend'] != startup_backend}).encode(), 'application/json')
             except Exception as exc:
                 self._send(400, json.dumps({'ok':False,'error':str(exc)}).encode(), 'application/json')
     server = http.server.ThreadingHTTPServer(('127.0.0.1', int(port)), Handler)
@@ -1794,7 +1826,7 @@ def start_control_server(cfg_path: Path, status: RuntimeStatus, port: int) -> ht
 
 
 class SLEDGEDaemon:
-    def __init__(self, cfg_path: Path, forced_backend: str = 'auto'):
+    def __init__(self, cfg_path: Path, forced_backend: str = 'auto', allow_steam_debugging: bool = False):
         self.cfg_path = cfg_path
         self.cfg = load_config(cfg_path)
         self.cfg_mtime = self._mtime()
@@ -1805,7 +1837,7 @@ class SLEDGEDaemon:
         self.thermal = ThermalLatch(self.cfg['thermal']['overheat_c'], self.cfg['thermal']['clear_c'])
         self.session = DownloadSession(self.cfg['download']['pause_idle_s'])
         self.pulse = ProgressPulse(self.cfg['download']['pulse_period_s'], 40, self.cfg['download']['pulse_min_progress'])
-        self.cef = CefObserver()
+        self.cef = CefObserver(allow_steam_debugging=allow_steam_debugging)
         self.acf = AcfObserver()
         self.backend = select_backend(self.cfg, forced_backend)
         device = getattr(self.backend, 'path', None) or getattr(self.backend, 'label', None)
@@ -1913,6 +1945,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(description='SLEDGE SteamOS front-bar bridge')
     parser.add_argument('--config', default=str(Path.home()/'.config/sledge/sledge.conf.json'))
     parser.add_argument('--backend', choices=('auto','cdc','hid','openrgb'), default='auto')
+    parser.add_argument('--allow-steam-debugging', action='store_true',
+                        help='Opt in to CEF fallback and enabling Steam remote debugging; requires a Steam restart')
     parser.add_argument('--test', action='store_true')
     parser.add_argument('--set-color')
     parser.add_argument('--set-effect', choices=('solid','breath','rainbow','patrol'))
@@ -1931,7 +1965,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         try: _test_pattern(backend, int(cfg['leds']['physical']))
         finally: backend.close()
         return 0
-    SLEDGEDaemon(cfg_path, args.backend).run()
+    SLEDGEDaemon(cfg_path, args.backend, allow_steam_debugging=args.allow_steam_debugging).run()
     return 0
 
 

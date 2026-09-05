@@ -514,7 +514,7 @@ class BackendPreferenceTests(unittest.TestCase):
 class CefMarkerPolicyTests(unittest.TestCase):
     def test_marker_is_delayed_until_fallback_connection_has_failed_for_ten_seconds(self):
         from unittest import mock
-        observer = bridge.CefObserver()
+        observer = bridge.CefObserver(allow_steam_debugging=True)
         with mock.patch.object(observer, '_connect', side_effect=OSError('no CEF')), \
              mock.patch.object(bridge, 'ensure_cef_marker', return_value=True) as marker, \
              mock.patch.object(bridge.time, 'monotonic', side_effect=[100.0, 111.0]):

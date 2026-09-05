@@ -14,7 +14,7 @@ The reference strip density of 144 LEDs/m is not a protocol requirement. `leds.p
 
 ## Steam-native ownership
 
-When Steam writes the Valve-compatible shim, Steam owns ordinary color, brightness, effects, and manual pixel frames. SLEDGE translates that state to the physical strip and keeps the 85 C thermal safety override above it. If native shim control is unavailable, SLEDGE can fall back to its Steam CEF/ACF download observer and configured idle behavior.
+When Steam writes the Valve-compatible shim, Steam owns ordinary color, brightness, effects, and manual pixel frames. SLEDGE translates that state to the physical strip and keeps the 85 C thermal safety override above it. If native shim control is unavailable, SLEDGE falls back to its ACF download observer and configured idle behavior. CEF fallback is an explicit startup opt-in.
 
 ## First install
 
@@ -35,7 +35,17 @@ That distinction matters when a shim was loaded manually with `insmod`: a workin
 
 The user service is enabled and restarted during install, and linger is enabled when available so the user manager can bring SLEDGE up automatically. OpenRGB is installed only as an optional service template and is not enabled.
 
-SLEDGE creates the Steam CEF remote-debugging marker only if the fallback observer actually needs CEF and cannot connect. A native Steam setup therefore does not enable CEF debugging unnecessarily.
+Steam CEF fallback and automatic remote-debugging enablement are **off by default**. The default service never connects to CEF or creates its debugging marker. Native Steam and ACF fallback do not require it.
+
+To explicitly opt in, add `--allow-steam-debugging` to the daemon's startup command. For the user service, use `systemctl --user edit sledge.service` and supply:
+
+```ini
+[Service]
+ExecStart=
+ExecStart=%h/.local/lib/sledge/sledge-bridge.py --config %h/.config/sledge/sledge.conf.json --backend auto --allow-steam-debugging
+```
+
+Then reload the user manager and restart SLEDGE. With this opt-in, sustained CEF connection failures may create `~/.steam/steam/.cef-enable-remote-debugging`; Steam must then restart before CEF fallback can connect. This exposes Steam's debugging interface, so enable it only when needed. Removing the flag stops SLEDGE's CEF access but does not delete a marker created earlier or disable an already-running Steam debugger. To disable that debugger, remove the marker and restart Steam. If a local service restriction makes Steam's directory read-only, it will continue to prevent marker creation even with this flag.
 
 Open **Settings > Customization > Front Lights** in Game Mode and change a light setting. Then check:
 
@@ -92,7 +102,9 @@ Open `http://127.0.0.1:1873/` on the SteamOS machine. The page shows current own
 
 Fallback controls include color, effect, brightness, physical count, mapping, **LED Direction**, backend preference, 85/80 thresholds, pause-to-idle timeout, and pulse period. When Steam-native ownership is active, ordinary color/effect choices still come from Steam's Front Lights controls.
 
-The Save button provides pressed/saving/saved feedback and a success/error toast. Unsaved form edits are not overwritten by the live status poll.
+The Save button provides pressed/saving/saved feedback and a success/error toast. Unsaved form edits are not overwritten by the live status poll. A changed backend preference is saved for the next service start; a persistent notice and `restart_required` API status remain until you restart SLEDGE or restore the original preference. Apply it with `systemctl --user restart sledge.service`. An explicit `--backend` value other than `auto` overrides the saved preference.
+
+The control server binds to `127.0.0.1`. Requests must use `127.0.0.1` or `localhost` with the actual listening port. Configuration writes require `Content-Type: application/json`; browser requests must be same-origin. Originless local command-line JSON requests remain supported. Cross-origin requests and unrecognized Host headers are rejected before reading or changing settings.
 
 ## Expected journal lines
 
