@@ -1847,6 +1847,8 @@ class SLEDGEDaemon:
                            mapping=self.cfg['leds']['mapping'], physical_leds=int(self.cfg['leds']['physical']))
         self.control = start_control_server(cfg_path, self.status, int(self.cfg['ui']['port']))
         self.last_owner = ''
+        self.next_steam_check = 0.0
+        self.steam_present = False
 
     def _mtime(self) -> float:
         try: return self.cfg_path.stat().st_mtime
@@ -1886,7 +1888,14 @@ class SLEDGEDaemon:
         else:
             dl = self.session.state
 
-        owner = choose_owner(thermal, native_active, dl.active and not native_active, not steam_running())
+        # Process discovery only affects boot versus idle, not higher-priority owners.
+        boot = False
+        if not (thermal or native_active or dl.active):
+            if now >= self.next_steam_check:
+                self.steam_present = steam_running()
+                self.next_steam_check = now + 1.0
+            boot = not self.steam_present
+        owner = choose_owner(thermal, native_active, dl.active and not native_active, boot)
         if owner != self.last_owner:
             print(f'owner -> {owner}', flush=True); self.last_owner = owner
 
