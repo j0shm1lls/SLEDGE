@@ -8,7 +8,7 @@
 
 Give your custom LED hardware a Steam-native front-light experience. Pick colors and effects in Game Mode; SLEDGE translates Steam's light state onto your physical strip.
 
-[Get the install package](public/sledge/sledge.zip) · [Install](#install) · [Troubleshooting](#troubleshooting) · [Detailed guide](public/sledge/README.md)
+[Get the install package](https://github.com/j0shm1lls/SLEDGE/releases/latest/download/sledge.zip) · [Install](#install) · [Troubleshooting](#troubleshooting) · [Detailed guide](public/sledge/README.md)
 
 ## See it in action
 
@@ -65,7 +65,7 @@ For the validated Nollie1, the serial list should include `usb-nollie.cn_Nollie1
 
 ### 3. Download, extract, install
 
-Download [sledge.zip](public/sledge/sledge.zip) using GitHub's **Download raw file** button. Extract it into a folder you will keep, then open a terminal **inside the extracted folder** and run:
+Download [sledge.zip](https://github.com/j0shm1lls/SLEDGE/releases/latest/download/sledge.zip). Extract it into a folder you will keep, then open a terminal **inside the extracted folder** and run:
 
 ```bash
 bash install.sh --with-shim
@@ -73,7 +73,7 @@ bash install.sh --with-shim
 
 Run this as your normal desktop user, **not** `sudo bash install.sh`. The installer requests administrator access for system changes, builds the shim for the running kernel, and starts your user service. On SteamOS it temporarily disables filesystem read-only protection for installation and restores it afterward. Existing SLEDGE settings are preserved.
 
-If headers do not match or the module fails to load, stop and inspect the error. Do not force-load a module or disable signature verification. The package is linked from this branch; it is not a claim that a tagged release is already published.
+If headers do not match or the module fails to load, stop and inspect the error. Do not force-load a module or disable signature verification.
 
 ### 4. Let Steam take control
 
