@@ -153,4 +153,4 @@ The README preview lives entirely in this repository. No hosted website is neede
 
 Runtime: Python standard library plus the kernel shim. No Node.js installation is needed to use SLEDGE. See [the package guide](public/sledge/README.md) for architecture and acceptance checks. Run `python3 -m unittest discover -s public/sledge/tests` for the runtime tests; frontend development uses the commands in `package.json`.
 
-The kernel shim is GPL-2.0+; see its [license](public/sledge/kernel/LICENSE) and [provenance](public/sledge/kernel/PROVENANCE.md). A repository-wide license has not yet been selected. SLEDGE is an independent project, not an official Valve, Nollie, or NexGen3D product.
+The kernel shim is GPL-2.0+; see its [license](public/sledge/kernel/LICENSE) and [provenance](public/sledge/kernel/PROVENANCE.md). SLEDGE is licensed under [GPL-2.0-or-later](LICENSE); existing third-party notices remain applicable. SLEDGE is an independent project, not an official Valve, Nollie, or NexGen3D product.

@@ -10,6 +10,7 @@ const files = [
   'openrgb.service',
   'install.sh',
   'README.md',
+  'LICENSE',
   'kernel/leds-valve-shim.c',
   'kernel/Makefile',
   'kernel/99-sledge.rules',

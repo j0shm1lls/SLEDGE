@@ -151,3 +151,7 @@ After a reboot, verify the persistent path rather than relying on the session th
 8. Pausing a fallback-observed download stops the activity pulse immediately; an explicit pause idles after 10 seconds.
 9. A simulated temperature at/above 85 C trips pure red and stays latched until at/below 80 C. Do not heat hardware intentionally for this test.
 10. Cancel/uninstall with no local download files returns to idle; an actively paused session is not misclassified as cancel.
+
+## License
+
+SLEDGE is licensed under the GNU General Public License, version 2 or (at your option) any later version. See [LICENSE](LICENSE). Existing third-party notices and the kernel shim provenance are preserved.
