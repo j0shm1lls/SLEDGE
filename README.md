@@ -50,7 +50,7 @@ The canvases run on the Nollie1. SLEDGE's own boot/idle fallback effects are sep
 
 ### 2. Check prerequisites in Desktop Mode
 
-You need Python 3, Bash, a compiler and `make`, administrator access through `sudo`, and **headers matching the running kernel**. The installer does not download these prerequisites.
+You need Python 3, Bash, a compiler and `make`, administrator access through `sudo`, and **headers matching the running kernel**. On SteamOS, the installer detects missing prerequisites and offers to install them after explicit permission. It also restores development files pruned from installed packages.
 
 Open Konsole and check:
 
@@ -61,7 +61,7 @@ command -v python3 gcc make modinfo sudo
 ls -l /dev/serial/by-id/
 ```
 
-For the validated Nollie1, the serial list should include `usb-nollie.cn_Nollie1_…-if00`. A header directory alone does not prove an exact match: use the official header package for your running SteamOS kernel. If any prerequisite is missing, see [preparing SteamOS](docs/INSTALL.md#preparing-steamos) before continuing.
+For the validated Nollie1, the serial list should include `usb-nollie.cn_Nollie1_…-if00`. A header directory alone does not prove an exact match: use the official header package for your running SteamOS kernel. If any prerequisite is missing, run the installer in Konsole and review its package proposal. See [preparing SteamOS](docs/INSTALL.md#preparing-steamos) for details.
 
 ### 3. Download, extract, install
 
@@ -110,7 +110,7 @@ Steam remote debugging and CEF fallback are **off by default**. Native lighting 
 
 ## After a SteamOS kernel update
 
-The shim must match the new **running kernel**. Install its official matching headers, then run this from your saved installation folder:
+The shim must match the new **running kernel**. Run this from your saved installation folder; the installer offers to prepare official matching headers and build prerequisites after permission:
 
 ```bash
 bash install.sh --repair-shim

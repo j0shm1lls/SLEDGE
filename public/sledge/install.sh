@@ -38,11 +38,18 @@ warn(){ printf 'WARN: %s\n' "$*" >&2; }
 
 restore_readonly(){
   if [[ "$ROOTFS_TOGGLED" == 1 ]] && command -v steamos-readonly >/dev/null 2>&1; then
-    sudo steamos-readonly enable >/dev/null 2>&1 || true
+    sudo steamos-readonly enable || { warn "Failed to restore read-only protection; run sudo steamos-readonly enable."; return 1; }
     ROOTFS_TOGGLED=0
   fi
 }
-trap restore_readonly EXIT
+cleanup(){
+  local status=$?
+  restore_readonly || status=1
+  exit "$status"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 shim_is_healthy(){
   [[ -r /dev/valve-leds-shim ]] || return 1
@@ -67,38 +74,174 @@ shim_is_persisted(){
 }
 
 disable_readonly_if_needed(){
+  local state status=0
   if command -v steamos-readonly >/dev/null 2>&1; then
-    if sudo steamos-readonly status 2>/dev/null | grep -qi enabled; then
-      sudo steamos-readonly disable
-      ROOTFS_TOGGLED=1
-    fi
+    state="$(sudo steamos-readonly status)" || status=$?
+    case "$state:$status" in
+      enabled:0)
+        ROOTFS_TOGGLED=1
+        sudo steamos-readonly disable || return 1 ;;
+      disabled:1|disabled:0) ;;
+      *) warn "Cannot establish filesystem read-only state; stopping."; return 1 ;;
+    esac
   fi
 }
 
 install_permissions(){
-  disable_readonly_if_needed
+  disable_readonly_if_needed || return 1
   sudo install -m 0644 "$HERE/kernel/99-sledge.rules" /etc/udev/rules.d/99-sledge.rules
   sudo udevadm control --reload-rules || true
   sudo udevadm trigger --subsystem-match=tty || true
   sudo udevadm trigger --subsystem-match=hidraw || true
   sudo udevadm trigger --subsystem-match=leds || true
   sudo udevadm trigger --subsystem-match=misc || true
-  restore_readonly
+  restore_readonly || return 1
+}
+
+# Resolve from the running kernel, not from a guessed kernel series.
+resolve_header_package(){
+  local base installed candidate
+  [[ -r "$KMOD_DIR/pkgbase" ]] || { warn "Cannot identify the running kernel package."; return 1; }
+  read -r base < "$KMOD_DIR/pkgbase"
+  [[ "$base" =~ ^[a-zA-Z0-9][a-zA-Z0-9+_.-]*$ ]] || return 1
+  installed="$(LC_ALL=C pacman -Q "$base" 2>/dev/null)" || return 1
+  installed="${installed#* }"
+  HEADER_PACKAGE="${base}-headers"
+  candidate="$(LC_ALL=C pacman -Si "$HEADER_PACKAGE" 2>/dev/null | awk '/^Version *:/ {print $3; exit}')" || return 1
+  if [[ -z "$candidate" || "$candidate" != "$installed" ]]; then
+    warn "No matching headers for $KREL in configured repositories. Update SteamOS through Settings, reboot, then retry --repair-shim."
+    return 1
+  fi
+}
+
+headers_match(){
+  local release
+  [[ -f "$KMOD_DIR/build/Makefile" && -r "$KMOD_DIR/build/include/config/kernel.release" ]] || return 1
+  read -r release < "$KMOD_DIR/build/include/config/kernel.release"
+  [[ "$release" == "$KREL" ]]
+}
+
+verify_build_prerequisites(){
+  local tool
+  headers_match || { warn "Kernel headers do not match $KREL."; return 1; }
+  for tool in gcc make ld as modinfo depmod modprobe; do
+    command -v "$tool" >/dev/null || { warn "Missing build tool: $tool"; return 1; }
+  done
+  [[ -f /usr/include/stdio.h && -f /usr/include/linux/types.h && -f /usr/include/libelf.h ]] || {
+    warn "Development headers are missing or pruned."; return 1;
+  }
+}
+
+collect_prerequisites(){
+  INSTALL_PACKAGES=(); REPAIR_PACKAGES=()
+  local tool package missing
+  if ! command -v python3 >/dev/null; then
+    if pacman -Q python >/dev/null 2>&1; then REPAIR_PACKAGES+=(python)
+    else INSTALL_PACKAGES+=(python); fi
+  fi
+  if [[ "$WITH_SHIM" != no ]] && { [[ "$WITH_SHIM" == force ]] || ! shim_is_persisted; }; then
+    local base='' header_missing=''
+    if [[ -r "$KMOD_DIR/pkgbase" ]]; then
+      read -r base < "$KMOD_DIR/pkgbase"
+      [[ "$base" =~ ^[a-zA-Z0-9][a-zA-Z0-9+_.-]*$ ]] || return 1
+      header_missing="$(LC_ALL=C pacman -Qkq "${base}-headers" 2>/dev/null || true)"
+    fi
+    if ! headers_match || [[ -n "$header_missing" ]]; then
+      resolve_header_package || return 1
+      # Reinstall even when pacman records the package as installed: files may be pruned.
+      REPAIR_PACKAGES+=("$HEADER_PACKAGE")
+    fi
+    for package in gcc make binutils kmod glibc linux-api-headers libelf; do
+      if ! pacman -Q "$package" >/dev/null 2>&1; then
+        INSTALL_PACKAGES+=("$package")
+      else
+        missing="$(LC_ALL=C pacman -Qkq "$package" 2>/dev/null || true)"
+        # Only build inputs/tools matter; missing documentation is expected on SteamOS.
+        if grep -Eq ' /usr/(include/|lib/gcc/|lib/[^ /]*\.(so|a|o)|bin/)' <<< "$missing"; then
+          REPAIR_PACKAGES+=("$package")
+        fi
+      fi
+    done
+  fi
+  ((${#INSTALL_PACKAGES[@]} + ${#REPAIR_PACKAGES[@]})) || return 0
+  # A package install must not turn into an implicit partial OS upgrade.
+  local transaction name version current
+  transaction="$(LC_ALL=C pacman -Sp --print-format '%n %v' -- "${INSTALL_PACKAGES[@]}" "${REPAIR_PACKAGES[@]}")" || return 1
+  while read -r name version; do
+    [[ -n "$name" ]] || continue
+    current="$(LC_ALL=C pacman -Q "$name" 2>/dev/null)" || continue
+    if [[ "${current#* }" != "$version" ]]; then
+      warn "Installing prerequisites would change $name from ${current#* } to $version. Update SteamOS through Settings and reboot first."
+      return 1
+    fi
+  done <<< "$transaction"
+}
+
+confirm_prerequisites(){
+  local answer
+  if [[ ! -t 0 ]]; then
+    warn "Prerequisites need permission in an interactive terminal; rerun this installer in Konsole."
+    return 1
+  fi
+  printf 'Install prerequisites? [y/N] '
+  read -r answer || return 1
+  [[ "$answer" == y || "$answer" == Y || "$answer" == yes || "$answer" == YES ]]
+}
+
+prepare_package_keyring(){
+  # Populate only the distribution's shipped trust roots; never delete a keyring.
+  [[ -r /usr/share/pacman/keyrings/archlinux.gpg && -r /usr/share/pacman/keyrings/holo.gpg ]] || {
+    warn "SteamOS package trust files are missing. Repair/update SteamOS first."; return 1;
+  }
+  sudo pacman-key --init || return 1
+  sudo pacman-key --populate archlinux holo || return 1
+}
+
+ensure_prerequisites(){
+  collect_prerequisites || return 1
+  ((${#INSTALL_PACKAGES[@]} + ${#REPAIR_PACKAGES[@]})) || return 0
+  say "Missing SteamOS prerequisites"
+  printf 'Install: %s\n' "${INSTALL_PACKAGES[*]:-(none)}"
+  printf 'Restore package files: %s\n' "${REPAIR_PACKAGES[*]:-(none)}"
+  echo "Use configured repositories and package signatures; temporarily make the root filesystem writable."
+  echo "Pacman will show dependencies, download size, and its transaction confirmation. SteamOS updates may remove these packages."
+  confirm_prerequisites || { warn "Prerequisite installation declined."; return 1; }
+  disable_readonly_if_needed || return 1
+  if ! prepare_package_keyring; then restore_readonly || true; return 1; fi
+  if ((${#INSTALL_PACKAGES[@]})) && ! sudo pacman -S --needed -- "${INSTALL_PACKAGES[@]}"; then
+    warn "Prerequisite download/install failed; no shim build attempted."
+    restore_readonly || true; return 1
+  fi
+  if ((${#REPAIR_PACKAGES[@]})) && ! sudo pacman -S -- "${REPAIR_PACKAGES[@]}"; then
+    warn "Restoring development files failed; no shim build attempted."
+    restore_readonly || true; return 1
+  fi
+  restore_readonly || return 1
+  command -v python3 >/dev/null || return 1
+  if [[ "$WITH_SHIM" != no ]] && { [[ "$WITH_SHIM" == force ]] || ! shim_is_persisted; }; then
+    verify_build_prerequisites || return 1
+  fi
+}
+
+preflight(){
+  local os_id
+  os_id="$(. /etc/os-release; printf '%s' "${ID:-}")"
+  if [[ "$os_id" == steamos ]] && command -v pacman >/dev/null; then
+    if ! ensure_prerequisites; then
+      if [[ "$WITH_SHIM" == yes || "$WITH_SHIM" == force ]] || ! command -v python3 >/dev/null; then return 1; fi
+      warn "Prerequisites unavailable; continuing with daemon fallback."
+      WITH_SHIM=no
+    fi
+  fi
+  command -v python3 >/dev/null || { warn "Python 3 is required; install it with your OS package manager."; return 1; }
 }
 
 build_shim(){
-  local kdir="$KMOD_DIR/build"
-  if [[ ! -d "$kdir" || ! -f "$kdir/Makefile" ]]; then
-    warn "Matching kernel headers are missing for $KREL."
-    warn "Install the running kernel's headers, then run ./install.sh --repair-shim."
-    return 1
-  fi
-  command -v make >/dev/null 2>&1 || { warn "make is required to build the shim."; return 1; }
-  command -v modinfo >/dev/null 2>&1 || { warn "modinfo is required to verify the shim."; return 1; }
+  verify_build_prerequisites || return 1
 
   say "Building Valve-compatible LED shim for $KREL"
   make -C "$HERE/kernel" clean >/dev/null 2>&1 || true
-  make -C "$HERE/kernel"
+  make -C "$HERE/kernel" || { warn "Shim build failed."; return 1; }
 
   if [[ ! -f "$HERE/kernel/leds-valve-shim.ko" ]]; then
     warn "Kernel build completed without leds-valve-shim.ko."
@@ -110,18 +253,18 @@ build_shim(){
   fi
 
   say "Installing shim for reboot persistence"
-  disable_readonly_if_needed
-  sudo install -D -m 0644 "$HERE/kernel/leds-valve-shim.ko" "$SHIM_DEST"
-  sudo install -d -m 0755 "$(dirname "$MODULES_LOAD_CONF")"
-  printf '%s\n' leds-valve-shim | sudo tee "$MODULES_LOAD_CONF" >/dev/null
-  sudo depmod -a "$KREL"
-  restore_readonly
+  disable_readonly_if_needed || return 1
+  sudo install -D -m 0644 "$HERE/kernel/leds-valve-shim.ko" "$SHIM_DEST" || return 1
+  sudo install -d -m 0755 "$(dirname "$MODULES_LOAD_CONF")" || return 1
+  printf '%s\n' leds-valve-shim | sudo tee "$MODULES_LOAD_CONF" >/dev/null || return 1
+  sudo depmod -a "$KREL" || return 1
+  restore_readonly || return 1
 
   # Do not tear down a healthy shim that Steam is already using. If the shim
   # is absent, load the newly persisted module now; otherwise it will be the
   # module selected automatically on the next boot.
   if ! shim_is_healthy; then
-    sudo modprobe leds-valve-shim
+    sudo modprobe leds-valve-shim || { warn "Module load failed. Secure Boot, lockdown and signature enforcement were not changed."; return 1; }
   fi
 
   if ! shim_is_persisted; then
@@ -184,6 +327,8 @@ install_or_repair_shim(){
   fi
   return 0
 }
+
+preflight || exit 1
 
 if [[ "$SHIM_ONLY" == 1 ]]; then
   say "Repairing Steam-native LED shim only"
