@@ -24,7 +24,7 @@ From Desktop Mode, unpack `sledge.zip` and run:
 ./install.sh --with-shim
 ```
 
-`--with-shim` is recommended on a BC-250 once matching running-kernel headers are available because it treats Steam-native support as required instead of silently accepting fallback-only operation. Plain `./install.sh` remains tolerant: it installs the daemon even when a missing shim cannot be built.
+`--with-shim` is recommended on a BC-250 because it treats Steam-native support as required instead of silently accepting fallback-only operation. Plain `./install.sh` remains tolerant: it installs the daemon even when a missing shim cannot be built.
 
 The installer preserves an existing SLEDGE config, installs the SLEDGE user service, installs the Nollie/shim udev rules, and checks two separate things about the kernel shim:
 
@@ -155,3 +155,23 @@ After a reboot, verify the persistent path rather than relying on the session th
 ## License
 
 SLEDGE is licensed under the GNU General Public License, version 2 or (at your option) any later version. See [LICENSE](LICENSE). Existing third-party notices and the kernel shim provenance are preserved.
+
+### Missing prerequisites on fresh SteamOS
+
+Run `bash install.sh --with-shim` in Konsole. Before installation changes, SLEDGE
+lists missing packages or pruned development files and asks
+`Install prerequisites? [y/N]`. Accepting permits package installation from the
+configured SteamOS repositories; pacman shows a second transaction confirmation.
+Declining or running without a terminal never automatically installs packages.
+
+Matching kernel headers are selected from the running kernel's package identity.
+The installer can install GCC/make and dependencies and restore pruned C/ELF
+headers. It preserves package signature checking and the original filesystem
+read-only state. It never disables Secure Boot, lockdown, or module signature
+enforcement. An unavailable matching package, proposed system-package upgrade,
+or rejected module stops the required shim installation. Update SteamOS through
+Settings, reboot, and retry when repository packages no longer match your system.
+No automatic repository refresh or OS upgrade is performed.
+
+After a SteamOS update, `bash install.sh --repair-shim` repeats this flow.
+`--without-shim` does not request kernel/build packages.

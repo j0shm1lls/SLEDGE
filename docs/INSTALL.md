@@ -14,10 +14,10 @@ These onboard effects are separate from SLEDGE's software fallbacks. Removing Lo
 
 1. Use Desktop Mode and open Konsole. Run `uname -r` to identify the running kernel.
 2. Verify that your normal user can use `sudo`. If you need to set an administrator password, do that locally; never put it in an issue or chat.
-3. Obtain Python 3, GCC, make, modinfo, and the **official headers for this exact kernel**. The appropriate header package changes with SteamOS versions. On the tested installation, kernel `7.2.0-valve1-1-neptune-72-gd39b4282853d` matched `linux-neptune-72-headers` version `7.2.0.valve1-1`. This is a historical example, not a package recommendation for every machine.
-4. Package installation on SteamOS can require temporarily allowing system writes. Preserve package-signature verification, and restore `steamos-readonly enable` after administrative setup, including on failure. Do not upgrade the kernel independently merely to make a header package fit.
-5. A fresh OS may have an uninitialized package keyring. Initialize it using SteamOS's installed vendor keyrings, rather than disabling signature checking. The validated setup used `sudo pacman-key --init` followed by `sudo pacman-key --populate archlinux holo`. Use these only when the keyring is missing and those vendor keyrings are installed.
-6. Verify `/usr/lib/modules/$(uname -r)/build/Makefile` exists and the generated `include/generated/utsrelease.h` identifies the running release. The final check is the built module's full vermagic. `make kernelrelease` can omit a source-control suffix in packaged headers; do not edit the headers to force a match.
+3. Run `bash install.sh --with-shim` from the extracted package folder. The installer detects Python, compiler/build tools, exact kernel headers, and pruned development files before changing the installation.
+4. Review the proposed package list and answer `Install prerequisites? [y/N]`. Enter or refusal installs no packages. Pacman shows its own transaction confirmation, including download size and dependencies. A terminal is required for consent.
+5. After permission, SLEDGE uses the configured SteamOS repositories and installed vendor keyrings, temporarily allows system writes when needed, and restores the original read-only state on exit. It never disables package signatures, Secure Boot, lockdown, or module-signature enforcement.
+6. If packages would require changing installed system-package versions, update SteamOS through Settings, reboot, and retry. The installer does not refresh repository databases, change channels, or upgrade the OS. Header release and built-module vermagic must match the running kernel.
 
 If official matching headers are unavailable, **stop**. Keep the exact running-kernel version and package-manager error for troubleshooting.
 
@@ -58,7 +58,7 @@ Change a Front Lights setting in Game Mode. On the same machine, check `http://1
 
 ## After a kernel update
 
-Reboot into the updated kernel, prepare its exact matching headers, and run:
+Reboot into the updated kernel and run; the installer offers to prepare missing matching headers after permission:
 
 ```bash
 # From the extracted package folder:
@@ -72,3 +72,37 @@ For a source checkout, use `bash public/sledge/install.sh --repair-shim` from th
 Back up `~/.config/sledge/sledge.conf.json` and any custom `~/.config/systemd/user/sledge.service.d/` drop-ins. Rerunning the installer preserves existing settings and restarts the daemon. Python-only updates can replace the installed bridge and restart the service without rebuilding an unchanged shim; see the [detailed package guide](../public/sledge/README.md#normal-sledge-update).
 
 For machines with a local `ReadOnlyPaths` restriction on Steam's directory, preserve that drop-in. The current default daemon already keeps CEF fallback disabled; the restriction additionally prevents marker creation even if the optional debugging flag is supplied.
+
+## SteamOS prerequisite permission
+
+On SteamOS, the installer checks prerequisites before copying files or changing
+system settings. Run it in Konsole. Missing packages and pruned development files
+are listed before `Install prerequisites? [y/N]`; Enter, refusal, or a noninteractive
+run does not authorize package installation. Pacman also shows and confirms its
+transaction. `--with-shim` and `--repair-shim` stop if prerequisites cannot be
+prepared; the default automatic mode can continue with daemon fallback.
+
+The installer derives the header package from the running kernel's `pkgbase`
+(e.g. `linux-neptune-72-headers`) and requires the installed kernel package version.
+It checks GCC, make, binutils, kmod, C/ELF development files, and Python. SteamOS
+can prune files from packages still recorded as installed, so affected packages
+are reinstalled without `--needed`. Package dependencies such as pahole are
+resolved by pacman.
+
+Only configured repositories are used. The installer does not refresh repository
+databases, switch channels, or perform a system upgrade. If the planned transaction
+would change an existing package version, matching headers are unavailable, or a
+download fails, use SteamOS Settings to update, reboot, and rerun the installer.
+It does not fetch arbitrary archives or bypass package signatures.
+
+After permission, the installer temporarily disables read-only mode if necessary,
+initializes/populates the shipped Arch Linux and Holo package trust keys without
+deleting the keyring, and restores the original filesystem protection on exit,
+including failure or interruption. Restoration errors are reported explicitly.
+Secure Boot, lockdown, and module signature enforcement are never disabled.
+A module rejected by the kernel remains a failed shim installation.
+
+SteamOS updates can remove development packages and the installed module. Run
+`bash install.sh --repair-shim` after updating and rebooting; the same consent and
+prerequisite checks apply. A healthy persistent shim needs no build prerequisites
+for a normal daemon update. `--without-shim` checks only the daemon runtime.
