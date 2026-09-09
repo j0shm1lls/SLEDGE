@@ -72,3 +72,37 @@ For a source checkout, use `bash public/sledge/install.sh --repair-shim` from th
 Back up `~/.config/sledge/sledge.conf.json` and any custom `~/.config/systemd/user/sledge.service.d/` drop-ins. Rerunning the installer preserves existing settings and restarts the daemon. Python-only updates can replace the installed bridge and restart the service without rebuilding an unchanged shim; see the [detailed package guide](../public/sledge/README.md#normal-sledge-update).
 
 For machines with a local `ReadOnlyPaths` restriction on Steam's directory, preserve that drop-in. The current default daemon already keeps CEF fallback disabled; the restriction additionally prevents marker creation even if the optional debugging flag is supplied.
+
+## SteamOS prerequisite permission
+
+On SteamOS, the installer checks prerequisites before copying files or changing
+system settings. Run it in Konsole. Missing packages and pruned development files
+are listed before `Install prerequisites? [y/N]`; Enter, refusal, or a noninteractive
+run does not authorize package installation. Pacman also shows and confirms its
+transaction. `--with-shim` and `--repair-shim` stop if prerequisites cannot be
+prepared; the default automatic mode can continue with daemon fallback.
+
+The installer derives the header package from the running kernel's `pkgbase`
+(e.g. `linux-neptune-72-headers`) and requires the installed kernel package version.
+It checks GCC, make, binutils, kmod, C/ELF development files, and Python. SteamOS
+can prune files from packages still recorded as installed, so affected packages
+are reinstalled without `--needed`. Package dependencies such as pahole are
+resolved by pacman.
+
+Only configured repositories are used. The installer does not refresh repository
+databases, switch channels, or perform a system upgrade. If the planned transaction
+would change an existing package version, matching headers are unavailable, or a
+download fails, use SteamOS Settings to update, reboot, and rerun the installer.
+It does not fetch arbitrary archives or bypass package signatures.
+
+After permission, the installer temporarily disables read-only mode if necessary,
+initializes/populates the shipped Arch Linux and Holo package trust keys without
+deleting the keyring, and restores the original filesystem protection on exit,
+including failure or interruption. Restoration errors are reported explicitly.
+Secure Boot, lockdown, and module signature enforcement are never disabled.
+A module rejected by the kernel remains a failed shim installation.
+
+SteamOS updates can remove development packages and the installed module. Run
+`bash install.sh --repair-shim` after updating and rebooting; the same consent and
+prerequisite checks apply. A healthy persistent shim needs no build prerequisites
+for a normal daemon update. `--without-shim` checks only the daemon runtime.

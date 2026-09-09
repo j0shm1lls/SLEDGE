@@ -22,7 +22,7 @@ class InstallerContractTests(unittest.TestCase):
     def test_release_zip_contains_only_runtime_package_files(self):
         expected = {
             'sledge-bridge.py', 'sledge.conf.json', 'sledge.service', 'openrgb.service',
-            'install.sh', 'README.md', 'kernel/leds-valve-shim.c', 'kernel/Makefile',
+            'install.sh', 'README.md', 'LICENSE', 'kernel/leds-valve-shim.c', 'kernel/Makefile',
             'kernel/99-sledge.rules', 'kernel/PROVENANCE.md', 'kernel/LICENSE',
         }
         with zipfile.ZipFile(ROOT / 'sledge.zip') as archive:
